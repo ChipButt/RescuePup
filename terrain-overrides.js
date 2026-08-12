@@ -15,6 +15,8 @@
   const WOLF_IDLE_SHEET = "./wolf/no shadow & effects/wolf-idle.png";
   const OUTSIDE_CLEARANCE_TILES = 3;
   const WOOD_SOURCE_COUNT = 20;
+  const WOOD_SOURCE_SCALE = 0.5;
+  const DEPTH_BASE = 100;
 
   function stableHash(x, y, salt = 0) {
     let value = Math.imul((x | 0) ^ 0x45d9f3b, 0x27d4eb2d);
@@ -28,6 +30,12 @@
 
   function pickByHash(items, x, y, salt = 0) {
     return items[stableHash(x, y, salt) % items.length];
+  }
+
+  function depthZ(position, layer = 0) {
+    // Projected screen Y is the authoritative isometric depth. This means
+    // anything lower on screen is always drawn in front of anything higher.
+    return DEPTH_BASE + Math.round(position.y) * 10 + layer;
   }
 
   function isBuildableCell(area, worldX, worldY) {
@@ -74,11 +82,42 @@
       const tile = inBuildArea
         ? BUILDABLE_TILE
         : pickByHash(OUTSIDE_TILES, worldX, worldY, 37);
+      const position = layoutIsoProject(
+        worldX + 0.5,
+        worldY + 0.5,
+        frame.offsetX,
+        frame.offsetY
+      );
 
       cell.style.setProperty("--terrain-tile", `url("${tile}")`);
+      cell.style.zIndex = String(depthZ(position, 0));
       cell.dataset.terrainTile = tile.replace("./", "");
       cell.dataset.terrainWorldX = String(worldX);
       cell.dataset.terrainWorldY = String(worldY);
+    });
+  }
+
+  function applyExistingMapObjectDepths(grid, frame) {
+    grid.querySelectorAll(".layout-raster-object, .layout-footprint-object").forEach((element) => {
+      const worldX = Number(element.dataset.gridX);
+      const worldY = Number(element.dataset.gridY);
+      const width = Number(element.dataset.gridWidth);
+      const height = Number(element.dataset.gridHeight);
+      if (![worldX, worldY, width, height].every(Number.isFinite)) return;
+
+      const anchor = layoutIsoProject(
+        worldX + width,
+        worldY + height,
+        frame.offsetX,
+        frame.offsetY
+      );
+      element.style.zIndex = String(depthZ(anchor, 6));
+    });
+
+    grid.querySelectorAll(".layout-fence").forEach((element) => {
+      const screenY = Number.parseFloat(element.style.top);
+      if (!Number.isFinite(screenY)) return;
+      element.style.zIndex = String(depthZ({ y: screenY }, 5));
     });
   }
 
@@ -115,15 +154,12 @@
   }
 
   function addWoodSources(grid, area, frame) {
-    const sources = chooseWoodSources(area, frame)
-      .map((source) => ({
-        ...source,
-        depth: source.worldX + source.worldY,
-        image: pickByHash(WOOD_SOURCE_TILES, source.worldX, source.worldY, 52)
-      }))
-      .sort((a, b) => a.depth - b.depth);
+    const sources = chooseWoodSources(area, frame).map((source) => ({
+      ...source,
+      image: pickByHash(WOOD_SOURCE_TILES, source.worldX, source.worldY, 52)
+    }));
 
-    sources.forEach((source, index) => {
+    sources.forEach((source) => {
       const position = layoutIsoProject(
         source.worldX + 0.5,
         source.worldY + 0.5,
@@ -141,7 +177,9 @@
       img.dataset.worldY = String(source.worldY);
       img.style.left = `${roundCss(position.x)}px`;
       img.style.top = `${roundCss(position.y)}px`;
-      img.style.zIndex = String(5 + index);
+      img.style.width = `${roundCss(LAYOUT_ISO_TILE_WIDTH * WOOD_SOURCE_SCALE)}px`;
+      img.style.height = `${roundCss(LAYOUT_ISO_TILE_WIDTH * WOOD_SOURCE_SCALE)}px`;
+      img.style.zIndex = String(depthZ(position, 4));
       grid.appendChild(img);
     });
   }
@@ -181,7 +219,7 @@
       button.setAttribute("aria-label", dog.name);
       button.style.left = `${roundCss(position.x)}px`;
       button.style.top = `${roundCss(position.y)}px`;
-      button.style.zIndex = String(70 + index);
+      button.style.zIndex = String(depthZ(position, 7));
       button.style.setProperty("--wolf-sheet", `url("${WOLF_IDLE_SHEET}")`);
       button.style.setProperty("--wolf-row", `${(index % 2) * -48}px`);
       button.innerHTML = '<span class="map-wolf-sprite" aria-hidden="true"></span>';
@@ -195,6 +233,7 @@
     const area = currentArea();
     const frame = layoutFrame(area);
     applyGroundTiles(grid, area, frame);
+    applyExistingMapObjectDepths(grid, frame);
     addWoodSources(grid, area, frame);
     addWolfDogs(grid, area, frame);
   }
