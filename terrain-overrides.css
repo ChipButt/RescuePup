@@ -7,7 +7,8 @@
 
 /* The logical cell centre/spacing still comes from the existing 28x20
    RescuePup grid. The supplied 32px art is drawn at 28px wide so one art tile
-   remains one logical game tile. */
+   remains one logical game tile. JavaScript assigns projected-Y z-indexes so
+   lower screen tiles are always drawn in front of higher screen tiles. */
 .layout-cell,
 .layout-cell.active-area,
 .layout-cell.outside-area,
@@ -66,11 +67,12 @@
   display: none;
 }
 
+/* Wood-source artwork is intentionally half the width/height of one logical
+   terrain-art tile: 14x14 at the current 28px runtime art scale. */
 .layout-wood-source {
   position: absolute;
-  z-index: 4 !important;
-  width: 28px;
-  height: 28px;
+  width: 14px;
+  height: 14px;
   object-fit: contain;
   transform: translate(-50%, -50%);
   transform-origin: center;
@@ -79,12 +81,11 @@
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
-  filter: drop-shadow(0 2px 1px rgba(10, 28, 10, 0.28));
+  filter: drop-shadow(0 1px 1px rgba(10, 28, 10, 0.24));
 }
 
 .map-wolf-dog {
   position: absolute;
-  z-index: 8 !important;
   width: 48px;
   height: 48px;
   min-width: 0;
@@ -127,6 +128,19 @@
 .town-map.placement-active .map-wolf-dog {
   opacity: 0.5;
   pointer-events: none;
+}
+
+/* Terrain and world objects use large projected-Y depth values. Keep all map
+   interaction UI in a dedicated top band within the layout-grid stacking
+   context so it can never disappear behind a lower terrain tile. */
+.layout-grid-mode .building-popup-scrim {
+  z-index: 19990;
+}
+
+.layout-grid-mode .placement-banner,
+.layout-grid-mode .building-inspector,
+.layout-grid-mode .map-popup {
+  z-index: 20000;
 }
 
 @keyframes rescuepupWolfIdle {
