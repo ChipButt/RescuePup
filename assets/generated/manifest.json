@@ -1,0 +1,72 @@
+{
+  "sources": {
+    "world": "assets/generated/world-source.png",
+    "buildings": "assets/generated/buildings-source.png",
+    "dogs": "assets/generated/dogs-source.png",
+    "icons": "assets/generated/icons-source.png",
+    "fence": "assets/generated/fence-source.png",
+    "fence_kit": "assets/generated/fence_kit-source.png",
+    "kennel_2x2": "assets/generated/kennel_2x2-source.png",
+    "kennel_2x1": "assets/generated/kennel_2x1-source.png"
+  },
+  "world": {
+    "board": "assets/world/town-board.png",
+    "grass": "assets/world/grass-tile.png"
+  },
+  "buildings": [
+    "assets/buildings/hq.png",
+    "assets/buildings/kennel.png",
+    "assets/buildings/storage.png",
+    "assets/buildings/food.png",
+    "assets/buildings/vet.png",
+    "assets/buildings/groom.png",
+    "assets/buildings/training.png",
+    "assets/buildings/park.png",
+    "assets/buildings/adoption.png",
+    "assets/buildings/staff.png",
+    "assets/buildings/donation.png"
+  ],
+  "dogs": [
+    "assets/dogs/beagle.png",
+    "assets/dogs/labrador.png",
+    "assets/dogs/terrier.png",
+    "assets/dogs/mixed.png",
+    "assets/dogs/puppy.png",
+    "assets/dogs/senior.png"
+  ],
+  "icons": [
+    "assets/icons/food.png",
+    "assets/icons/materials.png",
+    "assets/icons/medicine.png",
+    "assets/icons/coins.png",
+    "assets/icons/reputation.png",
+    "assets/icons/build.png",
+    "assets/icons/dogs.png",
+    "assets/icons/rescue.png",
+    "assets/icons/staff.png",
+    "assets/icons/adopt.png"
+  ],
+  "fence": [
+    "assets/world/fence_axis_x.png",
+    "assets/world/fence_axis_y.png",
+    "assets/world/fence_corner_top.png",
+    "assets/world/fence_corner_right.png",
+    "assets/world/fence_corner_bottom.png",
+    "assets/world/fence_corner_left.png"
+  ],
+  "fence_kit": [
+    "assets/world/fence_rail_x_tile.png",
+    "assets/world/fence_rail_y_tile.png",
+    "assets/world/fence_post_tile.png"
+  ],
+  "kennel_2x2": "assets/buildings/kennel_2x2_grid.png",
+  "kennel_2x1": "assets/buildings/kennel_2x1_grid.png",
+  "ui": [
+    "assets/ui/build.png",
+    "assets/ui/dogs.png",
+    "assets/ui/rescue.png",
+    "assets/ui/staff.png",
+    "assets/ui/adopt.png"
+  ],
+  "chroma_key": "#00ff00"
+}

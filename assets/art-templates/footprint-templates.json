@@ -1,0 +1,357 @@
+{
+  "runtimeTileWidth": 28,
+  "runtimeTileHeight": 20,
+  "runtimeWorldXVector": [
+    14,
+    10
+  ],
+  "runtimeWorldYVector": [
+    -14,
+    10
+  ],
+  "artScale": 4,
+  "templates": {
+    "1x1": {
+      "id": "1x1",
+      "footprintWidth": 1,
+      "footprintHeight": 1,
+      "runtimeTileWidth": 28,
+      "runtimeTileHeight": 20,
+      "runtimeWorldXVector": [
+        14,
+        10
+      ],
+      "runtimeWorldYVector": [
+        -14,
+        10
+      ],
+      "artScale": 4,
+      "artWorldXVector": [
+        56,
+        40
+      ],
+      "artWorldYVector": [
+        -56,
+        40
+      ],
+      "sourceCanvasWidth": 320,
+      "sourceCanvasHeight": 280,
+      "footprintBoundsSource": [
+        112,
+        80
+      ],
+      "footprintOriginSource": [
+        104,
+        180
+      ],
+      "footprintPolygonSource": [
+        [
+          160,
+          180
+        ],
+        [
+          216,
+          220
+        ],
+        [
+          160,
+          260
+        ],
+        [
+          104,
+          220
+        ]
+      ],
+      "footprintAnchorSource": [
+        160,
+        260
+      ],
+      "guide": "assets/art-templates/footprint-1x1-guide.png"
+    },
+    "2x1": {
+      "id": "2x1",
+      "footprintWidth": 2,
+      "footprintHeight": 1,
+      "runtimeTileWidth": 28,
+      "runtimeTileHeight": 20,
+      "runtimeWorldXVector": [
+        14,
+        10
+      ],
+      "runtimeWorldYVector": [
+        -14,
+        10
+      ],
+      "artScale": 4,
+      "artWorldXVector": [
+        56,
+        40
+      ],
+      "artWorldYVector": [
+        -56,
+        40
+      ],
+      "sourceCanvasWidth": 320,
+      "sourceCanvasHeight": 320,
+      "footprintBoundsSource": [
+        168,
+        120
+      ],
+      "footprintOriginSource": [
+        76,
+        180
+      ],
+      "footprintPolygonSource": [
+        [
+          132,
+          180
+        ],
+        [
+          244,
+          260
+        ],
+        [
+          188,
+          300
+        ],
+        [
+          76,
+          220
+        ]
+      ],
+      "footprintAnchorSource": [
+        188,
+        300
+      ],
+      "guide": "assets/art-templates/footprint-2x1-guide.png"
+    },
+    "2x2": {
+      "id": "2x2",
+      "footprintWidth": 2,
+      "footprintHeight": 2,
+      "runtimeTileWidth": 28,
+      "runtimeTileHeight": 20,
+      "runtimeWorldXVector": [
+        14,
+        10
+      ],
+      "runtimeWorldYVector": [
+        -14,
+        10
+      ],
+      "artScale": 4,
+      "artWorldXVector": [
+        56,
+        40
+      ],
+      "artWorldYVector": [
+        -56,
+        40
+      ],
+      "sourceCanvasWidth": 320,
+      "sourceCanvasHeight": 360,
+      "footprintBoundsSource": [
+        224,
+        160
+      ],
+      "footprintOriginSource": [
+        48,
+        180
+      ],
+      "footprintPolygonSource": [
+        [
+          160,
+          180
+        ],
+        [
+          272,
+          260
+        ],
+        [
+          160,
+          340
+        ],
+        [
+          48,
+          260
+        ]
+      ],
+      "footprintAnchorSource": [
+        160,
+        340
+      ],
+      "guide": "assets/art-templates/footprint-2x2-guide.png"
+    },
+    "3x2": {
+      "id": "3x2",
+      "footprintWidth": 3,
+      "footprintHeight": 2,
+      "runtimeTileWidth": 28,
+      "runtimeTileHeight": 20,
+      "runtimeWorldXVector": [
+        14,
+        10
+      ],
+      "runtimeWorldYVector": [
+        -14,
+        10
+      ],
+      "artScale": 4,
+      "artWorldXVector": [
+        56,
+        40
+      ],
+      "artWorldYVector": [
+        -56,
+        40
+      ],
+      "sourceCanvasWidth": 376,
+      "sourceCanvasHeight": 400,
+      "footprintBoundsSource": [
+        280,
+        200
+      ],
+      "footprintOriginSource": [
+        48,
+        180
+      ],
+      "footprintPolygonSource": [
+        [
+          160,
+          180
+        ],
+        [
+          328,
+          300
+        ],
+        [
+          216,
+          380
+        ],
+        [
+          48,
+          260
+        ]
+      ],
+      "footprintAnchorSource": [
+        216,
+        380
+      ],
+      "guide": "assets/art-templates/footprint-3x2-guide.png"
+    },
+    "3x3": {
+      "id": "3x3",
+      "footprintWidth": 3,
+      "footprintHeight": 3,
+      "runtimeTileWidth": 28,
+      "runtimeTileHeight": 20,
+      "runtimeWorldXVector": [
+        14,
+        10
+      ],
+      "runtimeWorldYVector": [
+        -14,
+        10
+      ],
+      "artScale": 4,
+      "artWorldXVector": [
+        56,
+        40
+      ],
+      "artWorldYVector": [
+        -56,
+        40
+      ],
+      "sourceCanvasWidth": 432,
+      "sourceCanvasHeight": 440,
+      "footprintBoundsSource": [
+        336,
+        240
+      ],
+      "footprintOriginSource": [
+        48,
+        180
+      ],
+      "footprintPolygonSource": [
+        [
+          216,
+          180
+        ],
+        [
+          384,
+          300
+        ],
+        [
+          216,
+          420
+        ],
+        [
+          48,
+          300
+        ]
+      ],
+      "footprintAnchorSource": [
+        216,
+        420
+      ],
+      "guide": "assets/art-templates/footprint-3x3-guide.png"
+    },
+    "4x3": {
+      "id": "4x3",
+      "footprintWidth": 4,
+      "footprintHeight": 3,
+      "runtimeTileWidth": 28,
+      "runtimeTileHeight": 20,
+      "runtimeWorldXVector": [
+        14,
+        10
+      ],
+      "runtimeWorldYVector": [
+        -14,
+        10
+      ],
+      "artScale": 4,
+      "artWorldXVector": [
+        56,
+        40
+      ],
+      "artWorldYVector": [
+        -56,
+        40
+      ],
+      "sourceCanvasWidth": 488,
+      "sourceCanvasHeight": 480,
+      "footprintBoundsSource": [
+        392,
+        280
+      ],
+      "footprintOriginSource": [
+        48,
+        180
+      ],
+      "footprintPolygonSource": [
+        [
+          216,
+          180
+        ],
+        [
+          440,
+          340
+        ],
+        [
+          272,
+          460
+        ],
+        [
+          48,
+          300
+        ]
+      ],
+      "footprintAnchorSource": [
+        272,
+        460
+      ],
+      "guide": "assets/art-templates/footprint-4x3-guide.png"
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "id": "kennel",
+  "footprintWidth": 2,
+  "footprintHeight": 2,
+  "image": "assets/buildings/kennel-aligned-v43.png",
+  "imageWidth": 320,
+  "imageHeight": 360,
+  "anchorX": 160,
+  "anchorY": 340,
+  "runtimeScale": 0.25,
+  "runtimeTileWidth": 28,
+  "runtimeTileHeight": 20,
+  "runtimeWorldXVector": [
+    14,
+    10
+  ],
+  "runtimeWorldYVector": [
+    -14,
+    10
+  ],
+  "artScale": 4,
+  "sourceCanvasWidth": 320,
+  "sourceCanvasHeight": 360,
+  "sourceAnchor": [
+    160,
+    340
+  ],
+  "cropApplied": false,
+  "cropOffset": [
+    0,
+    0
+  ],
+  "cropBounds": [
+    0,
+    0,
+    320,
+    360
+  ],
+  "footprintPolygonSource": [
+    [
+      160,
+      180
+    ],
+    [
+      272,
+      260
+    ],
+    [
+      160,
+      340
+    ],
+    [
+      48,
+      260
+    ]
+  ],
+  "footprintAnchorSource": [
+    160,
+    340
+  ],
+  "sprite": "assets/buildings/kennel-aligned-v43.png",
+  "source": "assets/generated/kennel-2x2-source-canvas-v43.png",
+  "template": "assets/art-templates/footprint-templates.json#templates.2x2",
+  "generationGuide": "assets/art-templates/footprint-2x2-guide.png",
+  "generationMode": "built-in image_gen with chroma-key post-processing"
+}
