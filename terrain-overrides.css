@@ -68,6 +68,7 @@
 
 .layout-wood-source {
   position: absolute;
+  z-index: 4 !important;
   width: 28px;
   height: 28px;
   object-fit: contain;
@@ -83,6 +84,7 @@
 
 .map-wolf-dog {
   position: absolute;
+  z-index: 8 !important;
   width: 48px;
   height: 48px;
   min-width: 0;
