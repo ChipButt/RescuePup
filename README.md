@@ -13,10 +13,10 @@ python3 -m http.server 8099
 Then open:
 
 ```text
-http://127.0.0.1:8112/index.html?v=60
+http://127.0.0.1:8112/index.html?v=61
 ```
 
-If that port is already in use, pick another port and keep the same `index.html?v=60` path.
+If that port is already in use, pick another port and keep the same `index.html?v=61` path.
 
 ## Raster art pipeline
 

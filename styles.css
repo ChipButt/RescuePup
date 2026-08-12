@@ -5225,12 +5225,13 @@ body {
 }
 
 .layout-grid-mode .building-popup-close {
-  right: 1.5%;
-  top: 5.55%;
+  left: 86.0355%;
+  right: auto;
+  top: 5.5518%;
   z-index: 5;
-  width: 12.5%;
-  height: auto;
-  aspect-ratio: 1;
+  width: 12.5444%;
+  height: 7.0903%;
+  aspect-ratio: auto;
 }
 
 .layout-grid-mode .building-popup-close img,
@@ -5244,13 +5245,13 @@ body {
 }
 
 .layout-grid-mode .building-title-plank {
-  left: 20%;
-  right: 20%;
-  top: 4.55%;
+  left: 26.6272%;
+  right: auto;
+  top: 5.3512%;
   z-index: 3;
-  width: auto;
+  width: 47.3373%;
   min-height: 0;
-  height: 6.2%;
+  height: 4.3478%;
   display: grid;
   place-items: center;
   padding: 0 4%;
@@ -5271,7 +5272,7 @@ body {
   margin: 0;
   overflow: hidden;
   color: #fff9ea;
-  font-size: clamp(1.25rem, 5.4vw, 2rem);
+  font-size: clamp(1.15rem, 5.44vw, 2.875rem);
   font-weight: 950;
   line-height: 1;
   text-align: center;
@@ -5284,12 +5285,12 @@ body {
 
 .layout-grid-mode .building-level-ribbon {
   position: absolute;
-  left: 36.5%;
-  top: 12.25%;
+  left: 43.787%;
+  top: 12.3746%;
   z-index: 3;
-  width: 29%;
+  width: 20.7101%;
   min-width: 0;
-  height: 3.6%;
+  height: 2.6756%;
   display: grid;
   place-items: center;
   margin: 0;
@@ -5304,7 +5305,7 @@ body {
 
 .layout-grid-mode .building-level-ribbon strong {
   overflow: hidden;
-  font-size: clamp(0.72rem, 3.4vw, 1.2rem);
+  font-size: clamp(0.72rem, 4.5vw, 2.375rem);
   font-weight: 950;
   line-height: 1;
   text-align: center;
@@ -5314,11 +5315,10 @@ body {
 
 .layout-grid-mode .building-image-window {
   position: absolute;
-  left: 10.5%;
-  top: 15.45%;
+  inset: 0;
   z-index: 2;
-  width: 79%;
-  height: 36.35%;
+  width: auto;
+  height: auto;
   min-height: 0;
   display: grid;
   place-items: center;
@@ -5327,39 +5327,33 @@ body {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .layout-grid-mode .building-panel-backdrop {
-  inset: 4.3% 4.2%;
-  border-radius: 10px;
-  background:
-    radial-gradient(circle at 76% 19%, rgba(255, 255, 255, 0.88) 0 10%, transparent 11%),
-    radial-gradient(circle at 65% 78%, rgba(255, 255, 255, 0.82) 0 1.5%, transparent 1.8%),
-    radial-gradient(circle at 35% 82%, rgba(255, 255, 255, 0.78) 0 1.3%, transparent 1.6%),
-    linear-gradient(180deg, #90cef0 0%, #cceeff 43%, #77af4e 44%, #58913a 100%);
-  box-shadow: none;
+  display: none;
 }
 
 .layout-grid-mode .building-panel-art {
   position: absolute;
-  left: 50%;
-  top: 48%;
+  left: 15.3846%;
+  top: 9.3645%;
   z-index: 2;
-  width: 76%;
-  height: 66%;
+  width: 66.8639%;
+  height: 34.1137%;
   display: grid;
   place-items: center;
   filter: drop-shadow(0 13px 8px rgba(52, 20, 6, 0.32));
-  transform: translate(-50%, -50%);
+  transform: none;
 }
 
 .layout-grid-mode .building-panel-art .building-panel-sprite,
 .layout-grid-mode .building-panel-art .building-panel-sprite.uses-map-raster {
   width: 100%;
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
 
 .layout-grid-mode .building-panel-sprite-stack,
@@ -5369,13 +5363,19 @@ body {
   height: 100%;
 }
 
+.layout-grid-mode .building-panel-sprite-stack .building-panel-overlay {
+  object-fit: cover;
+}
+
 .layout-grid-mode .building-move-control {
-  right: 5.4%;
-  bottom: 6.6%;
+  left: 73.3728%;
+  right: auto;
+  top: 43.4783%;
+  bottom: auto;
   z-index: 4;
-  width: 14.6%;
-  height: auto;
-  aspect-ratio: 1;
+  width: 14.2012%;
+  height: 7.6923%;
+  aspect-ratio: auto;
   min-width: 0;
   min-height: 0;
   padding: 0;
@@ -5392,11 +5392,11 @@ body {
 
 .layout-grid-mode .building-description-window {
   position: absolute;
-  left: 16%;
-  top: 49.3%;
+  left: 16.568%;
+  top: 44.1472%;
   z-index: 3;
-  width: 54%;
-  height: 4.2%;
+  width: 53.9645%;
+  height: 6.3545%;
   display: grid;
   place-items: center;
   padding: 0 2%;
@@ -5412,7 +5412,7 @@ body {
   margin: 0;
   overflow: hidden;
   color: #5b3819;
-  font-size: clamp(0.46rem, 2.25vw, 0.68rem);
+  font-size: clamp(0.58rem, 3.08vw, 1.625rem);
   font-weight: 900;
   line-height: 1.12;
   text-align: center;
@@ -5421,17 +5421,18 @@ body {
 
 .layout-grid-mode .building-upgrade-heading {
   position: absolute;
-  left: 12%;
-  right: 12%;
-  top: 53.55%;
+  left: 30.7692%;
+  right: auto;
+  top: 53.5117%;
   z-index: 3;
-  height: 3%;
+  width: 37.2781%;
+  height: 3.3445%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
   color: #4e2c11;
-  font-size: clamp(0.58rem, 2.8vw, 0.9rem);
+  font-size: clamp(0.56rem, 3.08vw, 1.625rem);
   font-weight: 950;
   line-height: 1;
   text-align: center;
@@ -5444,41 +5445,60 @@ body {
   white-space: nowrap;
 }
 
+.layout-grid-mode .building-upgrade-heading span {
+  display: none;
+}
+
 .layout-grid-mode .building-upgrade-grid {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 57.1%;
+  inset: 0;
   z-index: 3;
-  height: 28%;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 3%;
+  height: auto;
+  display: block;
+  pointer-events: none;
 }
 
 .layout-grid-mode .building-panel-list {
-  position: relative;
+  position: absolute;
   min-width: 0;
-  padding: 16% 5.6% 4.2%;
+  padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   overflow: hidden;
+  pointer-events: auto;
+}
+
+.layout-grid-mode .building-panel-list:nth-child(1) {
+  left: 10.6509%;
+  top: 57.5251%;
+  width: 36.9231%;
+  height: 27.7592%;
+}
+
+.layout-grid-mode .building-panel-list:nth-child(2) {
+  left: 53.2544%;
+  top: 57.5251%;
+  width: 34.9112%;
+  height: 27.4247%;
 }
 
 .layout-grid-mode .building-panel-list h4 {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 5%;
-  width: auto;
+  left: 3.2051%;
+  right: auto;
+  top: 0;
+  width: 91.6667%;
+  height: 9.1566%;
+  display: grid;
+  place-items: center;
   margin: 0;
   padding: 0;
   border: 0;
   color: #fff9e5;
   background: transparent;
-  font-size: clamp(0.47rem, 2.2vw, 0.66rem);
+  font-size: clamp(0.44rem, 1.78vw, 0.9375rem);
   font-weight: 950;
   line-height: 1;
   text-align: center;
@@ -5486,31 +5506,50 @@ body {
   text-shadow: 0 2px 0 #17334c, 0 3px 4px rgba(0, 0, 0, 0.25);
 }
 
+.layout-grid-mode .building-panel-list:nth-child(2) h4 {
+  left: 5.0847%;
+  width: 96.9492%;
+  height: 9.2683%;
+}
+
 .layout-grid-mode .building-panel-list ul {
+  position: absolute;
+  left: 0;
+  top: 13.253%;
+  width: 100%;
+  height: 86.747%;
+  display: grid;
+  align-content: start;
   gap: 2px;
+  overflow: hidden;
+}
+
+.layout-grid-mode .building-panel-list:nth-child(2) ul {
+  top: 13.4146%;
+  height: 86.5854%;
 }
 
 .layout-grid-mode .building-panel-list li {
-  grid-template-columns: 21px minmax(0, 1fr) 16px;
+  grid-template-columns: 25px minmax(0, 1fr) 16px;
   gap: 4px;
-  min-height: 26px;
+  min-height: 0;
   padding-bottom: 3px;
   border-bottom-color: rgba(129, 80, 31, 0.19);
 }
 
 .layout-grid-mode .building-panel-list img {
-  width: 21px;
-  height: 21px;
+  width: 25px;
+  height: 25px;
 }
 
 .layout-grid-mode .building-panel-list b {
-  font-size: clamp(0.45rem, 2vw, 0.6rem);
+  font-size: clamp(0.46rem, 2.2vw, 0.72rem);
   line-height: 1.04;
 }
 
 .layout-grid-mode .building-panel-list small {
   margin-top: 1px;
-  font-size: clamp(0.46rem, 2vw, 0.62rem);
+  font-size: clamp(0.46rem, 2.25vw, 0.7rem);
 }
 
 .layout-grid-mode .building-panel-list i {
@@ -5521,18 +5560,19 @@ body {
 
 .layout-grid-mode .building-panel-controls {
   position: absolute;
-  left: 17%;
-  right: 17%;
-  bottom: 3.1%;
+  inset: 0;
   z-index: 4;
-  height: 7.7%;
+  height: auto;
   display: block;
+  pointer-events: none;
 }
 
 .layout-grid-mode .building-inspector .upgrade-building-button {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  left: -5.9172%;
+  top: 87.9599%;
+  width: 112.426%;
+  height: 7.6923%;
   min-height: 0;
   display: block;
   padding: 0;
@@ -5541,6 +5581,7 @@ body {
   background: transparent;
   box-shadow: none;
   overflow: visible;
+  pointer-events: auto;
 }
 
 .layout-grid-mode .building-inspector .upgrade-building-button:active {
@@ -5569,14 +5610,21 @@ body {
 
 .layout-grid-mode .building-inspector .upgrade-building-button small.upgrade-button-time {
   position: absolute;
-  left: 50%;
-  bottom: 12%;
+  left: 43.68%;
+  top: 61.74%;
   z-index: 2;
+  width: 21.05%;
+  height: 24.35%;
   margin: 0;
   color: #fff7dd;
-  font-size: clamp(0.5rem, 2.35vw, 0.72rem);
+  font-size: clamp(0.45rem, 2.37vw, 1.25rem);
   font-weight: 950;
   line-height: 1;
+  text-align: center;
   text-shadow: 0 2px 0 rgba(41, 72, 10, 0.78), 0 3px 4px rgba(0, 0, 0, 0.32);
-  transform: translateX(-50%);
+  transform: none;
+}
+
+.layout-grid-mode .building-inspector .upgrade-spark-icon {
+  display: none;
 }

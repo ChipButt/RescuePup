@@ -3312,7 +3312,7 @@ window.addEventListener("keydown", (event) => {
 window.setInterval(advanceTime, 1000);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=60").then((registration) => {
+  navigator.serviceWorker.register("./sw.js?v=61").then((registration) => {
     registration.update();
   }).catch(() => {});
 }
