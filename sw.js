@@ -1,4 +1,4 @@
-const CACHE_NAME = "pawborough-v64";
+const CACHE_NAME = "pawborough-v65";
 const ASSETS = [
   "./",
   "./index.html",
