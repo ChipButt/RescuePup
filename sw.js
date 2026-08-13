@@ -1,4 +1,4 @@
-const CACHE_NAME = "pawborough-v67";
+const CACHE_NAME = "pawborough-v68";
 const ASSETS = [
   "./",
   "./index.html",
@@ -8,10 +8,7 @@ const ASSETS = [
   "./terrain-overrides.js",
   "./manifest.json",
   "./pawborough-icon.svg",
-  "./tile_037.png",
-  "./tile_038.png",
-  "./tile_039.png",
-  "./tile_040.png",
+  "./Bottom%20Grassland.png",
   "./tile_048.png",
   "./tile_049.png",
   "./tile_050.png",
