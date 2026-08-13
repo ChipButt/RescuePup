@@ -1,4 +1,4 @@
-const CACHE_NAME = "pawborough-v70";
+const CACHE_NAME = "pawborough-v72";
 const ASSETS = [
   "./",
   "./index.html",
@@ -10,6 +10,7 @@ const ASSETS = [
   "./pawborough-icon.svg",
   "./Bottom%20Grassland.png",
   "./Bottom%20Grassland%20Dry.png",
+  "./Stick%20Storage%20Sprite%20Sheet.png",
   "./fence_corner_E.png",
   "./fence_corner_N.png",
   "./fence_corner_S.png",
