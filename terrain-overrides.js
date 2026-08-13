@@ -1,9 +1,9 @@
 "use strict";
 
 // RescuePup floor-first renderer.
-// The supplied 32x32 pixel-art terrain assets are now the authoritative
-// geometry for the map. Everything that is added later must use this same
-// projection instead of forcing these assets onto the old 28x20 grid.
+// The supplied 32x32 pixel-art terrain assets are the authoritative geometry
+// for the map. The outside ground is one terrain layer; the buildable area is
+// a second raised layer so tile_040 keeps its visible dirt/cliff perimeter.
 (() => {
   const TERRAIN_TILE_SIZE = 32;
   const TERRAIN_STEP_X = 16;
@@ -62,34 +62,52 @@
     };
   }
 
-  function floorTiles(area) {
-    const range = floorRange(area);
-    const tiles = [];
+  function tileRecord(worldX, worldY, src, buildable) {
+    const center = terrainIsoPoint(worldX + 0.5, worldY + 0.5);
+    return {
+      worldX,
+      worldY,
+      centerX: center.x,
+      centerY: center.y,
+      buildable,
+      src,
+      depth: worldX + worldY
+    };
+  }
 
-    for (let worldY = range.minY; worldY < range.maxY; worldY += 1) {
-      for (let worldX = range.minX; worldX < range.maxX; worldX += 1) {
-        const center = terrainIsoPoint(worldX + 0.5, worldY + 0.5);
-        const buildable = isBuildable(area, worldX, worldY);
-        tiles.push({
-          worldX,
-          worldY,
-          centerX: center.x,
-          centerY: center.y,
-          buildable,
-          src: buildable ? BUILDABLE_TILE : outsideTileFor(worldX, worldY),
-          depth: worldX + worldY
-        });
-      }
-    }
-
-    // Top/back first, bottom/front last. Ties use a stable coordinate order.
+  function sortTerrainLayer(tiles) {
     tiles.sort((a, b) =>
       a.depth - b.depth ||
       a.worldY - b.worldY ||
       a.worldX - b.worldX
     );
-
     return tiles;
+  }
+
+  function floorTiles(area) {
+    const range = floorRange(area);
+    const outside = [];
+    const buildable = [];
+
+    for (let worldY = range.minY; worldY < range.maxY; worldY += 1) {
+      for (let worldX = range.minX; worldX < range.maxX; worldX += 1) {
+        if (isBuildable(area, worldX, worldY)) {
+          buildable.push(tileRecord(worldX, worldY, BUILDABLE_TILE, true));
+        } else {
+          outside.push(tileRecord(
+            worldX,
+            worldY,
+            outsideTileFor(worldX, worldY),
+            false
+          ));
+        }
+      }
+    }
+
+    return {
+      outside: sortTerrainLayer(outside),
+      buildable: sortTerrainLayer(buildable)
+    };
   }
 
   function floorBounds(tiles) {
@@ -119,25 +137,8 @@
     ].join(":");
   }
 
-  function renderFloor(force = false) {
-    if (!els?.townMap) return;
-
-    const area = currentArea();
-    const width = els.townMap.clientWidth || 390;
-    const height = els.townMap.clientHeight || 560;
-    const signature = floorSignature(area, width, height);
-    const existing = els.townMap.querySelector(".terrain-floor-world");
-
-    // Passive game ticks still call renderMap(), but the floor DOM is kept
-    // intact unless the playable area or viewport dimensions actually change.
-    if (!force && existing && signature === lastFloorSignature) return;
-
-    const tiles = floorTiles(area);
-    const bounds = floorBounds(tiles);
-    const offsetX = width / 2 - (bounds.left + bounds.width / 2);
-    const offsetY = height / 2 - (bounds.top + bounds.height / 2);
-
-    const tileMarkup = tiles.map((tile, index) => {
+  function tileMarkup(tiles, offsetX, offsetY) {
+    return tiles.map((tile, index) => {
       const x = tile.centerX + offsetX;
       const y = tile.centerY + offsetY;
       return `
@@ -153,6 +154,26 @@
         />
       `;
     }).join("");
+  }
+
+  function renderFloor(force = false) {
+    if (!els?.townMap) return;
+
+    const area = currentArea();
+    const width = els.townMap.clientWidth || 390;
+    const height = els.townMap.clientHeight || 560;
+    const signature = floorSignature(area, width, height);
+    const existing = els.townMap.querySelector(".terrain-floor-world");
+
+    // Passive game ticks still call renderMap(), but the floor DOM is kept
+    // intact unless the playable area or viewport dimensions actually change.
+    if (!force && existing && signature === lastFloorSignature) return;
+
+    const layers = floorTiles(area);
+    const allTiles = [...layers.outside, ...layers.buildable];
+    const bounds = floorBounds(allTiles);
+    const offsetX = width / 2 - (bounds.left + bounds.width / 2);
+    const offsetY = height / 2 - (bounds.top + bounds.height / 2);
 
     els.townMap.className = "town-map layout-grid-mode terrain-floor-mode";
     els.townMap.innerHTML = `
@@ -164,12 +185,17 @@
         data-floor-signature="${signature}"
         aria-label="RescuePup terrain floor"
       >
-        ${tileMarkup}
+        <div class="terrain-floor-layer terrain-outside-layer" aria-hidden="true">
+          ${tileMarkup(layers.outside, offsetX, offsetY)}
+        </div>
+        <div class="terrain-floor-layer terrain-buildable-layer" aria-hidden="true">
+          ${tileMarkup(layers.buildable, offsetX, offsetY)}
+        </div>
       </div>
       <div class="map-status terrain-floor-status" aria-hidden="true">
         <span class="status-chip">Floor pass</span>
         <span class="status-chip">32x32 native</span>
-        <span class="status-chip">16x8 projection</span>
+        <span class="status-chip">Raised build plateau</span>
       </div>
     `;
 
