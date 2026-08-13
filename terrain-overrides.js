@@ -1,31 +1,19 @@
 "use strict";
 
-// RescuePup terrain/art override.
-// Uses the exact user-supplied root assets without regenerating or redrawing them.
+// RescuePup floor-first renderer.
+// The supplied 32x32 pixel-art terrain assets are now the authoritative
+// geometry for the map. Everything that is added later must use this same
+// projection instead of forcing these assets onto the old 28x20 grid.
 (() => {
+  const TERRAIN_TILE_SIZE = 32;
+  const TERRAIN_STEP_X = 16;
+  const TERRAIN_STEP_Y = 8;
+  const TERRAIN_PADDING = 10;
   const BUILDABLE_TILE = "./tile_040.png";
   const OUTSIDE_TILES = ["./tile_037.png", "./tile_038.png", "./tile_039.png"];
-  const WOOD_SOURCE_TILES = [
-    "./tile_048.png",
-    "./tile_049.png",
-    "./tile_050.png",
-    "./tile_051.png",
-    "./tile_052.png"
-  ];
-  const WOLF_IDLE_SHEET = "./wolf/no shadow & effects/wolf-idle.png";
-  const OUTSIDE_CLEARANCE_TILES = 3;
-  const WOOD_SOURCE_COUNT = 20;
-  const WOOD_SOURCE_SCALE = 0.5;
 
-  // Ground tiles deliberately use a small, self-contained depth range.
-  // The top corner is the lowest layer and the bottom corner is the highest.
-  // World objects sit above the ground range but still sort by the same diagonal.
-  const TERRAIN_DEPTH_BASE = 10;
-  const TERRAIN_DEPTH_STEP = 10;
-  const OBJECT_DEPTH_BASE = 1000;
-
-  let lastMapSignature = null;
-  const preloadedImages = [];
+  let lastFloorSignature = null;
+  let resizeFrame = null;
 
   function stableHash(x, y, salt = 0) {
     let value = Math.imul((x | 0) ^ 0x45d9f3b, 0x27d4eb2d);
@@ -37,43 +25,26 @@
     return value >>> 0;
   }
 
-  function pickByHash(items, x, y, salt = 0) {
-    return items[stableHash(x, y, salt) % items.length];
+  function outsideTileFor(worldX, worldY) {
+    return OUTSIDE_TILES[stableHash(worldX, worldY, 37) % OUTSIDE_TILES.length];
   }
 
-  function terrainDepth(worldX, worldY, frame) {
-    // Exact isometric tile-stack order: minX/minY (the top corner) is at the
-    // back. Every step toward the bottom corner raises the layer. This makes
-    // the lowest visible tile the topmost terrain layer.
-    const diagonal =
-      (worldX - frame.minX) +
-      (worldY - frame.minY);
-    return TERRAIN_DEPTH_BASE + diagonal * TERRAIN_DEPTH_STEP;
+  function terrainIsoPoint(worldX, worldY) {
+    return {
+      x: (worldX - worldY) * TERRAIN_STEP_X,
+      y: (worldX + worldY) * TERRAIN_STEP_Y
+    };
   }
 
-  function objectDepth(worldX, worldY, frame, layer = 0) {
-    const diagonal =
-      (worldX - frame.minX) +
-      (worldY - frame.minY);
-    return OBJECT_DEPTH_BASE + diagonal * TERRAIN_DEPTH_STEP + layer;
+  function terrainIsoProject(worldX, worldY, offsetX = 0, offsetY = 0) {
+    const point = terrainIsoPoint(worldX, worldY);
+    return {
+      x: point.x + offsetX,
+      y: point.y + offsetY
+    };
   }
 
-  function preloadTerrainAssets() {
-    const sources = [
-      BUILDABLE_TILE,
-      ...OUTSIDE_TILES,
-      ...WOOD_SOURCE_TILES,
-      WOLF_IDLE_SHEET
-    ];
-    sources.forEach((src) => {
-      const image = new Image();
-      image.decoding = "async";
-      image.src = src;
-      preloadedImages.push(image);
-    });
-  }
-
-  function isBuildableCell(area, worldX, worldY) {
+  function isBuildable(area, worldX, worldY) {
     return (
       worldX >= area.minX &&
       worldY >= area.minY &&
@@ -82,261 +53,160 @@
     );
   }
 
-  // A source can only appear once there are at least three complete outside
-  // terrain cells between it and every edge of the buildable rectangle.
-  function isFarEnoughFromBuildBoundary(area, worldX, worldY) {
-    const insideThreeTileBuffer =
-      worldX >= area.minX - OUTSIDE_CLEARANCE_TILES &&
-      worldX < area.maxX + OUTSIDE_CLEARANCE_TILES &&
-      worldY >= area.minY - OUTSIDE_CLEARANCE_TILES &&
-      worldY < area.maxY + OUTSIDE_CLEARANCE_TILES;
-    return !insideThreeTileBuffer;
+  function floorRange(area) {
+    return {
+      minX: area.minX - TERRAIN_PADDING,
+      minY: area.minY - TERRAIN_PADDING,
+      maxX: area.maxX + TERRAIN_PADDING,
+      maxY: area.maxY + TERRAIN_PADDING
+    };
   }
 
-  function layoutFrame(area) {
+  function floorTiles(area) {
+    const range = floorRange(area);
+    const tiles = [];
+
+    for (let worldY = range.minY; worldY < range.maxY; worldY += 1) {
+      for (let worldX = range.minX; worldX < range.maxX; worldX += 1) {
+        const center = terrainIsoPoint(worldX + 0.5, worldY + 0.5);
+        const buildable = isBuildable(area, worldX, worldY);
+        tiles.push({
+          worldX,
+          worldY,
+          centerX: center.x,
+          centerY: center.y,
+          buildable,
+          src: buildable ? BUILDABLE_TILE : outsideTileFor(worldX, worldY),
+          depth: worldX + worldY
+        });
+      }
+    }
+
+    // Top/back first, bottom/front last. Ties use a stable coordinate order.
+    tiles.sort((a, b) =>
+      a.depth - b.depth ||
+      a.worldY - b.worldY ||
+      a.worldX - b.worldX
+    );
+
+    return tiles;
+  }
+
+  function floorBounds(tiles) {
+    const half = TERRAIN_TILE_SIZE / 2;
+    const left = Math.min(...tiles.map((tile) => tile.centerX - half));
+    const right = Math.max(...tiles.map((tile) => tile.centerX + half));
+    const top = Math.min(...tiles.map((tile) => tile.centerY - half));
+    const bottom = Math.max(...tiles.map((tile) => tile.centerY + half));
+    return {
+      left,
+      right,
+      top,
+      bottom,
+      width: right - left,
+      height: bottom - top
+    };
+  }
+
+  function floorSignature(area, width, height) {
+    return [
+      area.minX,
+      area.minY,
+      area.maxX,
+      area.maxY,
+      Math.round(width),
+      Math.round(height)
+    ].join(":");
+  }
+
+  function renderFloor(force = false) {
+    if (!els?.townMap) return;
+
+    const area = currentArea();
     const width = els.townMap.clientWidth || 390;
     const height = els.townMap.clientHeight || 560;
-    const minX = area.minX - LAYOUT_GRID_PADDING;
-    const minY = area.minY - LAYOUT_GRID_PADDING;
-    const maxX = area.maxX + LAYOUT_GRID_PADDING;
-    const maxY = area.maxY + LAYOUT_GRID_PADDING;
-    const columns = maxX - minX;
-    const rows = maxY - minY;
-    const gridBounds = layoutIsoBounds(minX, minY, maxX, maxY);
-    const offsetX = width / 2 - (gridBounds.left + gridBounds.width / 2);
-    const offsetY = height / 2 - (gridBounds.top + gridBounds.height / 2);
-    return { width, height, minX, minY, maxX, maxY, columns, rows, offsetX, offsetY };
+    const signature = floorSignature(area, width, height);
+    const existing = els.townMap.querySelector(".terrain-floor-world");
+
+    // Passive game ticks still call renderMap(), but the floor DOM is kept
+    // intact unless the playable area or viewport dimensions actually change.
+    if (!force && existing && signature === lastFloorSignature) return;
+
+    const tiles = floorTiles(area);
+    const bounds = floorBounds(tiles);
+    const offsetX = width / 2 - (bounds.left + bounds.width / 2);
+    const offsetY = height / 2 - (bounds.top + bounds.height / 2);
+
+    const tileMarkup = tiles.map((tile, index) => {
+      const x = tile.centerX + offsetX;
+      const y = tile.centerY + offsetY;
+      return `
+        <img
+          class="terrain-floor-tile ${tile.buildable ? "buildable-floor-tile" : "outside-floor-tile"}"
+          src="${tile.src}"
+          alt=""
+          draggable="false"
+          data-world-x="${tile.worldX}"
+          data-world-y="${tile.worldY}"
+          data-floor-depth="${tile.depth}"
+          style="left:${x}px;top:${y}px;z-index:${10 + index};"
+        />
+      `;
+    }).join("");
+
+    els.townMap.className = "town-map layout-grid-mode terrain-floor-mode";
+    els.townMap.innerHTML = `
+      <div
+        class="terrain-floor-world"
+        data-tile-size="${TERRAIN_TILE_SIZE}"
+        data-step-x="${TERRAIN_STEP_X}"
+        data-step-y="${TERRAIN_STEP_Y}"
+        data-floor-signature="${signature}"
+        aria-label="RescuePup terrain floor"
+      >
+        ${tileMarkup}
+      </div>
+      <div class="map-status terrain-floor-status" aria-hidden="true">
+        <span class="status-chip">Floor pass</span>
+        <span class="status-chip">32x32 native</span>
+        <span class="status-chip">16x8 projection</span>
+      </div>
+    `;
+
+    lastFloorSignature = signature;
   }
 
-  function mapRenderSignature() {
-    const area = currentArea();
-    const buildings = state.buildings.map((building) => [
-      building.id,
-      building.type,
-      building.level || 1,
-      building.status || "ready",
-      building.worldX,
-      building.worldY,
-      building.upgrade?.toLevel || null
-    ]);
-    const dogs = state.dogs.map((dog) => dog.id);
-    const placement = placementMode
-      ? [
-          placementMode.action,
-          placementMode.type,
-          placementMode.buildingId || null,
-          placementMode.worldX,
-          placementMode.worldY,
-          Boolean(placementMode.hasDragged)
-        ]
-      : null;
+  // Make the supplied terrain geometry the projection used by future map art.
+  // Existing buildings/props are deliberately not rendered during this pass;
+  // they will be reintroduced against this projection after the floor is approved.
+  layoutIsoPoint = terrainIsoPoint;
+  layoutIsoProject = terrainIsoProject;
 
-    return JSON.stringify({
-      area: [area.minX, area.minY, area.maxX, area.maxY],
-      buildings,
-      dogs,
-      selectedBuildingId: selectedBuildingId || null,
-      placement,
-      mapPopup: mapPopup || null
-    });
-  }
+  window.RescuePupTerrain = Object.freeze({
+    tileSize: TERRAIN_TILE_SIZE,
+    stepX: TERRAIN_STEP_X,
+    stepY: TERRAIN_STEP_Y,
+    padding: TERRAIN_PADDING,
+    project: terrainIsoProject,
+    point: terrainIsoPoint
+  });
 
-  function applyGroundTiles(grid, area, frame) {
-    const cells = [...grid.querySelectorAll(".layout-cell")];
-    cells.forEach((cell, index) => {
-      const worldX = frame.minX + (index % frame.columns);
-      const worldY = frame.minY + Math.floor(index / frame.columns);
-      const inBuildArea = isBuildableCell(area, worldX, worldY);
-      const tile = inBuildArea
-        ? BUILDABLE_TILE
-        : pickByHash(OUTSIDE_TILES, worldX, worldY, 37);
-
-      cell.style.setProperty("--terrain-tile", `url("${tile}")`);
-      cell.style.zIndex = String(terrainDepth(worldX, worldY, frame));
-      cell.dataset.terrainTile = tile.replace("./", "");
-      cell.dataset.terrainWorldX = String(worldX);
-      cell.dataset.terrainWorldY = String(worldY);
-      cell.dataset.terrainDepth = String(terrainDepth(worldX, worldY, frame));
-    });
-  }
-
-  function applyExistingMapObjectDepths(grid, frame) {
-    grid.querySelectorAll(".layout-raster-object, .layout-footprint-object").forEach((element) => {
-      const worldX = Number(element.dataset.gridX);
-      const worldY = Number(element.dataset.gridY);
-      const width = Number(element.dataset.gridWidth);
-      const height = Number(element.dataset.gridHeight);
-      if (![worldX, worldY, width, height].every(Number.isFinite)) return;
-
-      element.style.zIndex = String(
-        objectDepth(worldX + width, worldY + height, frame, 6)
-      );
-    });
-
-    grid.querySelectorAll(".layout-fence").forEach((element) => {
-      const screenY = Number.parseFloat(element.style.top);
-      if (!Number.isFinite(screenY)) return;
-      // Convert the already-projected Y back to a stable high object layer.
-      element.style.zIndex = String(OBJECT_DEPTH_BASE + Math.round(screenY) * 10 + 5);
-    });
-  }
-
-  function woodSourceCandidates(area, frame) {
-    const candidates = [];
-    for (let worldY = frame.minY; worldY < frame.maxY; worldY += 1) {
-      for (let worldX = frame.minX; worldX < frame.maxX; worldX += 1) {
-        if (isBuildableCell(area, worldX, worldY)) continue;
-        if (!isFarEnoughFromBuildBoundary(area, worldX, worldY)) continue;
-        candidates.push({
-          worldX,
-          worldY,
-          score: stableHash(worldX, worldY, 48052)
-        });
-      }
-    }
-    candidates.sort((a, b) => a.score - b.score);
-    return candidates;
-  }
-
-  function chooseWoodSources(area, frame) {
-    const chosen = [];
-    for (const candidate of woodSourceCandidates(area, frame)) {
-      const tooClose = chosen.some((other) => {
-        const dx = Math.abs(other.worldX - candidate.worldX);
-        const dy = Math.abs(other.worldY - candidate.worldY);
-        return Math.max(dx, dy) < 2;
-      });
-      if (tooClose) continue;
-      chosen.push(candidate);
-      if (chosen.length >= WOOD_SOURCE_COUNT) break;
-    }
-    return chosen;
-  }
-
-  function addWoodSources(grid, area, frame) {
-    const sources = chooseWoodSources(area, frame).map((source) => ({
-      ...source,
-      image: pickByHash(WOOD_SOURCE_TILES, source.worldX, source.worldY, 52)
-    }));
-
-    sources.forEach((source) => {
-      const position = layoutIsoProject(
-        source.worldX + 0.5,
-        source.worldY + 0.5,
-        frame.offsetX,
-        frame.offsetY
-      );
-      const img = document.createElement("img");
-      img.className = "layout-wood-source";
-      img.src = source.image;
-      img.alt = "";
-      img.draggable = false;
-      img.dataset.woodSourceId = `wood-${source.worldX}-${source.worldY}`;
-      img.dataset.woodSourceTile = source.image.replace("./", "");
-      img.dataset.worldX = String(source.worldX);
-      img.dataset.worldY = String(source.worldY);
-      img.style.left = `${roundCss(position.x)}px`;
-      img.style.top = `${roundCss(position.y)}px`;
-      img.style.width = `${roundCss(LAYOUT_ISO_TILE_WIDTH * WOOD_SOURCE_SCALE)}px`;
-      img.style.height = `${roundCss(LAYOUT_ISO_TILE_WIDTH * WOOD_SOURCE_SCALE)}px`;
-      img.style.zIndex = String(objectDepth(source.worldX, source.worldY, frame, 4));
-      grid.appendChild(img);
-    });
-  }
-
-  function availableDogCells(area) {
-    const cells = [];
-    for (let worldY = area.minY + 1; worldY < area.maxY - 1; worldY += 1) {
-      for (let worldX = area.minX + 1; worldX < area.maxX - 1; worldX += 1) {
-        if (buildingAtCell(worldX, worldY)) continue;
-        cells.push({
-          worldX,
-          worldY,
-          score: stableHash(worldX, worldY, 911)
-        });
-      }
-    }
-    cells.sort((a, b) => a.score - b.score);
-    return cells;
-  }
-
-  function addWolfDogs(grid, area, frame) {
-    const cells = availableDogCells(area);
-    state.dogs.slice(0, Math.min(5, cells.length)).forEach((dog, index) => {
-      const cell = cells[index];
-      const position = layoutIsoProject(
-        cell.worldX + 0.5,
-        cell.worldY + 0.5,
-        frame.offsetX,
-        frame.offsetY
-      );
-      const button = document.createElement("button");
-      button.className = "map-wolf-dog";
-      button.type = "button";
-      button.dataset.dogId = dog.id;
-      button.dataset.worldX = String(cell.worldX);
-      button.dataset.worldY = String(cell.worldY);
-      button.setAttribute("aria-label", dog.name);
-      button.style.left = `${roundCss(position.x)}px`;
-      button.style.top = `${roundCss(position.y)}px`;
-      button.style.zIndex = String(objectDepth(cell.worldX, cell.worldY, frame, 7));
-      button.style.setProperty("--wolf-sheet", `url("${WOLF_IDLE_SHEET}")`);
-      button.style.setProperty("--wolf-row", `${(index % 2) * -48}px`);
-      button.innerHTML = '<span class="map-wolf-sprite" aria-hidden="true"></span>';
-      grid.appendChild(button);
-    });
-  }
-
-  function refreshWorkProgressWithoutMapRebuild() {
-    state.buildings.forEach((building) => {
-      if (!hasBuildingWorkInProgress(building)) return;
-      const host = [...els.townMap.querySelectorAll("[data-building-id]")]
-        .find((element) => element.dataset.buildingId === building.id);
-      const badge = host?.querySelector(".layout-work-progress");
-      if (!badge) return;
-      const progress = buildingProgress(building);
-      badge.style.setProperty("--progress-deg", `${buildingProgressDegrees(building)}deg`);
-      const value = badge.querySelector("b");
-      if (value) value.textContent = `${progress}%`;
-    });
-  }
-
-  function decorateTerrain() {
-    const grid = els?.townMap?.querySelector(".layout-grid");
-    if (!grid || grid.dataset.rescuepupTerrainDecorated === "true") return;
-    const area = currentArea();
-    const frame = layoutFrame(area);
-    applyGroundTiles(grid, area, frame);
-    applyExistingMapObjectDepths(grid, frame);
-    addWoodSources(grid, area, frame);
-    addWolfDogs(grid, area, frame);
-    grid.dataset.rescuepupTerrainDecorated = "true";
-  }
-
-  preloadTerrainAssets();
-
-  const originalRenderMap = renderMap;
-  renderMap = function renderMapWithSuppliedTerrainAssets(...args) {
-    const nextSignature = mapRenderSignature();
-    const existingGrid = els?.townMap?.querySelector(".layout-grid");
-
-    // render() is called by the six-second passive game tick and every second
-    // while a building is under construction. If the map structure has not
-    // changed, leave the existing DOM and decoded images untouched. This is
-    // what removes the terrain/dog/wood flash caused by rebuilding innerHTML.
-    if (existingGrid && nextSignature === lastMapSignature) {
-      refreshWorkProgressWithoutMapRebuild();
-      return;
-    }
-
-    originalRenderMap(...args);
-    decorateTerrain();
-    lastMapSignature = nextSignature;
-    refreshWorkProgressWithoutMapRebuild();
+  renderMap = function renderFloorOnlyMap() {
+    renderFloor(false);
   };
 
-  // app.js performs its first render before this deferred override executes.
-  // Refresh the map once so the supplied artwork is installed, then subsequent
-  // passive ticks keep this same DOM alive until the map actually changes.
-  renderMap();
+  // app.js has already performed its initial render before this deferred script.
+  renderFloor(true);
+
+  // Recenter the native-pixel terrain only when the map viewport itself changes.
+  if (typeof ResizeObserver !== "undefined") {
+    const observer = new ResizeObserver(() => {
+      if (resizeFrame) cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = null;
+        renderFloor(true);
+      });
+    });
+    observer.observe(els.townMap);
+  }
 })();
