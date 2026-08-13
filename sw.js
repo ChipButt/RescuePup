@@ -1,4 +1,4 @@
-const CACHE_NAME = "pawborough-v68";
+const CACHE_NAME = "pawborough-v69";
 const ASSETS = [
   "./",
   "./index.html",
@@ -9,6 +9,15 @@ const ASSETS = [
   "./manifest.json",
   "./pawborough-icon.svg",
   "./Bottom%20Grassland.png",
+  "./Bottom%20Grassland%20Dry.png",
+  "./fence_corner_E.png",
+  "./fence_corner_N.png",
+  "./fence_corner_S.png",
+  "./fence_corner_W.png",
+  "./fence_straight_NE.png",
+  "./fence_straight_NW.png",
+  "./fence_straight_SE.png",
+  "./fence_straight_SW.png",
   "./tile_048.png",
   "./tile_049.png",
   "./tile_050.png",
@@ -28,7 +37,6 @@ const ASSETS = [
   "./assets/world/fence_post_tile.png",
   "./assets/world/fence_rail_x_tile.png",
   "./assets/world/fence_rail_y_tile.png",
-  "./assets/world/grass-tile.png",
   "./assets/world/town-board.png",
   "./assets/buildings/adoption.png",
   "./assets/buildings/donation.png",
