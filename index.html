@@ -1,131 +1,18 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#5fbf77" />
-    <title>Pawborough</title>
-    <link rel="manifest" href="./manifest.json?v=61" />
-    <link rel="icon" href="./pawborough-icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=61" />
-    <link rel="stylesheet" href="./terrain-overrides.css?v=70" />
-  </head>
-  <body>
-    <main class="app-shell" aria-label="Pawborough game">
-      <section class="splash" id="splash" aria-labelledby="splash-title">
-        <div class="splash-sky">
-          <div class="cloud cloud-a"></div>
-          <div class="cloud cloud-b"></div>
-          <div class="splash-town">
-            <div class="splash-building splash-hq"></div>
-            <div class="splash-building splash-kennel"></div>
-            <div class="splash-dog"></div>
-          </div>
-        </div>
-        <div class="splash-card">
-          <div class="brand-mark" aria-hidden="true">
-            <span></span><span></span><span></span><span></span><b></b>
-          </div>
-          <h1 id="splash-title">Pawborough</h1>
-          <p>A cosy dog-rescue town builder</p>
-          <button class="primary-button" id="start-game" type="button">Start rescue</button>
-        </div>
-      </section>
-
-      <section class="game-frame" aria-live="polite">
-        <header class="top-bar">
-          <div class="player-card">
-            <img src="./assets/icons/dogs.png" alt="" draggable="false" />
-            <span class="level-badge">12</span>
-            <div>
-              <p class="eyebrow">Pawborough</p>
-              <h2>PawRescuer</h2>
-            </div>
-          </div>
-          <button class="round-button menu-button" id="reset-game" type="button" aria-label="Reset saved game">
-            <span class="reset-icon"></span>
-          </button>
-        </header>
-
-        <div class="resource-bar" id="resource-bar" aria-label="Resources"></div>
-
-        <section class="screen active" id="screen-home" aria-label="Town view">
-          <div class="town-map" id="town-map" aria-label="Rescue town map"></div>
-
-          <aside class="goal-panel" aria-label="Current goals">
-            <div class="panel-heading">
-              <span class="tool-icon ribbon-icon"></span>
-              <h3>Goals</h3>
-            </div>
-            <div id="goal-list"></div>
-          </aside>
-        </section>
-
-        <section class="screen" id="screen-dogs" aria-label="Dog management"></section>
-        <section class="screen" id="screen-rescue" aria-label="Rescue intake"></section>
-        <section class="screen" id="screen-workers" aria-label="Worker management"></section>
-        <section class="screen" id="screen-adopt" aria-label="Adoption"></section>
-
-        <nav class="bottom-nav" aria-label="Main navigation">
-          <button class="nav-button active" type="button" data-screen="home">
-            <img class="nav-art nav-art-wide" src="./assets/buildings/hq.png" alt="" draggable="false" />
-            Town
-          </button>
-          <button class="nav-button" type="button" data-screen="dogs">
-            <img class="nav-art" src="./assets/ui/dogs.png" alt="" draggable="false" />
-            Dogs
-          </button>
-          <button class="nav-button" type="button" data-screen="rescue">
-            <img class="nav-art" src="./assets/ui/rescue.png" alt="" draggable="false" />
-            Rescue
-          </button>
-          <button class="nav-button" type="button" data-screen="workers">
-            <img class="nav-art" src="./assets/ui/staff.png" alt="" draggable="false" />
-            Staff
-          </button>
-          <button class="nav-button" type="button" data-open-build-nav>
-            <img class="nav-art" src="./assets/ui/build.png" alt="" draggable="false" />
-            Build
-          </button>
-        </nav>
-      </section>
-
-      <section class="sheet-backdrop" id="build-sheet" aria-hidden="true">
-        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="build-title">
-          <div class="sheet-handle"></div>
-          <div class="sheet-header">
-            <div>
-              <p class="eyebrow">Expand the rescue</p>
-              <h2 id="build-title">Build menu</h2>
-            </div>
-            <button class="round-button integrated-close-button" id="close-build" type="button" aria-label="Close build menu">
-              <span class="close-button-x" aria-hidden="true"></span>
-            </button>
-          </div>
-          <div class="build-grid" id="build-grid"></div>
-        </div>
-      </section>
-
-      <section class="sheet-backdrop" id="dog-sheet" aria-hidden="true">
-        <div class="sheet dog-sheet" role="dialog" aria-modal="true" aria-labelledby="dog-title">
-          <div class="sheet-handle"></div>
-          <div class="sheet-header">
-            <div>
-              <p class="eyebrow" id="dog-subtitle">Dog profile</p>
-              <h2 id="dog-title">Dog</h2>
-            </div>
-            <button class="round-button integrated-close-button" id="close-dog" type="button" aria-label="Close dog profile">
-              <span class="close-button-x" aria-hidden="true"></span>
-            </button>
-          </div>
-          <div id="dog-detail"></div>
-        </div>
-      </section>
-
-      <div class="toast-stack" id="toast-stack" aria-live="assertive"></div>
-    </main>
-
-    <script src="./app.js?v=61" defer></script>
-    <script src="./terrain-overrides.js?v=72" defer></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#5fbf77" />
+  <title>Pawborough</title>
+  <link rel="manifest" href="./manifest.json?v=80" />
+  <link rel="icon" href="./pawborough-icon.svg" />
+  <link rel="stylesheet" href="./styles.css?v=80" />
+  <link rel="stylesheet" href="./terrain-overrides.css?v=80" />
+  <script src="./app.js?v=80" defer></script>
+  <script src="./terrain-overrides.js?v=80" defer></script>
+</head>
+<body>
+  <main class="app-shell" aria-label="Pawborough game"></main>
+</body>
 </html>
