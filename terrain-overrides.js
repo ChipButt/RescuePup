@@ -137,7 +137,7 @@
     ].join(":");
   }
 
-  function tileMarkup(tiles, offsetX, offsetY) {
+  function tileMarkup(tiles, offsetX, offsetY, zBase) {
     return tiles.map((tile, index) => {
       const x = tile.centerX + offsetX;
       const y = tile.centerY + offsetY;
@@ -150,7 +150,7 @@
           data-world-x="${tile.worldX}"
           data-world-y="${tile.worldY}"
           data-floor-depth="${tile.depth}"
-          style="left:${x}px;top:${y}px;z-index:${10 + index};"
+          style="left:${x}px;top:${y}px;z-index:${zBase + index};"
         />
       `;
     }).join("");
@@ -185,12 +185,8 @@
         data-floor-signature="${signature}"
         aria-label="RescuePup terrain floor"
       >
-        <div class="terrain-floor-layer terrain-outside-layer" aria-hidden="true">
-          ${tileMarkup(layers.outside, offsetX, offsetY)}
-        </div>
-        <div class="terrain-floor-layer terrain-buildable-layer" aria-hidden="true">
-          ${tileMarkup(layers.buildable, offsetX, offsetY)}
-        </div>
+        ${tileMarkup(layers.outside, offsetX, offsetY, 10)}
+        ${tileMarkup(layers.buildable, offsetX, offsetY, 10000)}
       </div>
       <div class="map-status terrain-floor-status" aria-hidden="true">
         <span class="status-chip">Floor pass</span>
