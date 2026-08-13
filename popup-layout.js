@@ -18,7 +18,7 @@ const BUILDING_POPUP_LAYOUT = Object.freeze({
     requirementsList: Object.freeze({ rectPx:{x:90,y:915,width:312,height:360}, rectPercent:{left:10.6509,top:61.204,width:36.9231,height:24.0803}, zIndex:30, listStyle:{rowHeightPx:58,rowGapPx:3,iconSizePx:36,fontSizePx:16,fontWeight:900,color:"#4e3016",lineHeight:1.05} }),
     bonusesHeading: Object.freeze({ rectPx:{x:465,y:860,width:286,height:38}, rectPercent:{left:55.0296,top:57.5251,width:33.8462,height:2.5418}, zIndex:30 }),
     bonusesList: Object.freeze({ rectPx:{x:450,y:915,width:295,height:355}, rectPercent:{left:53.2544,top:61.204,width:34.9112,height:23.7458}, zIndex:30, listStyle:{rowHeightPx:58,rowGapPx:3,iconSizePx:36,fontSizePx:16,fontWeight:900,color:"#4e3016",lineHeight:1.05} }),
-    upgradeButton: Object.freeze({ rectPx:{x:-50,y:1315,width:950,height:115}, rectPercent:{left:-5.9172,top:87.9599,width:112.426,height:7.6923}, zIndex:40, assetPath:"assets/ui/button-start-upgrade.png", objectFit:"contain" }),
+    upgradeButton: Object.freeze({ rectPx:{x:-50,y:1315,width:950,height:115}, rectPercent:{left:-5.9172,top:87.9599,width:112.426,height:7.6923}, zIndex:40, assetPath:"approved-inline-start-upgrade", objectFit:"contain" }),
     upgradeTime: Object.freeze({ rectPx:{x:365,y:1386,width:200,height:28}, rectPercent:{left:43.1953,top:92.709,width:23.6686,height:1.8729}, zIndex:50 })
   })
 });
@@ -90,6 +90,7 @@ renderBuildingPopup = function renderJsonBuildingPopup(building) {
   const canUpgradeNow = Boolean(cost && canAfford(cost));
   const timeText = popupUpgradeTime(building);
   const upgradeHeading = level < 6 ? `UPGRADE TO LEVEL ${nextLevel}` : "MAXIMUM LEVEL";
+  const upgradeButtonAsset = window.RescuePupUpgradeButtonAsset || "./assets/ui/button-start-upgrade.png";
 
   return `
     <button class="building-popup-scrim" type="button" data-close-building-ui aria-label="Close building details"></button>
@@ -113,7 +114,7 @@ renderBuildingPopup = function renderJsonBuildingPopup(building) {
       <div class="popup-layout-text popup-section-heading" data-popup-layout-id="bonusesHeading" style="${popupLayoutStyle("bonusesHeading")}">UPGRADE BONUSES</div>
       <div class="popup-layout-list popup-bonuses-list" data-popup-layout-id="bonusesList" style="${popupLayoutStyle("bonusesList")}"><ul>${renderPopupBonuses(building)}</ul></div>
       <button class="popup-layout-button popup-upgrade-button ${canUpgradeNow ? "upgrade-ready" : "upgrade-locked"}" data-popup-layout-id="upgradeButton" style="${popupLayoutStyle("upgradeButton")}" type="button" data-upgrade-building="${building.id}" ${canUpgradeNow ? "" : "disabled"} aria-label="${level < 6 ? `Upgrade ${catalog.name}` : "Maximum level"}">
-        <img src="./assets/ui/button-start-upgrade.png" alt="" draggable="false" />
+        <img src="${upgradeButtonAsset}" alt="" draggable="false" />
         <span class="sr-only">${level < 6 ? `Upgrade · ${costText(cost)}` : "Maximum level"}</span>
       </button>
       ${timeText ? `<div class="popup-layout-text popup-upgrade-time" data-popup-layout-id="upgradeTime" style="${popupLayoutStyle("upgradeTime")}">${timeText}</div>` : ""}
