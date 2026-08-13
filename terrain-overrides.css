@@ -15,24 +15,24 @@
   isolation: isolate;
 }
 
-/* Supplied floor assets are authoritative: 32x32 at native size.
-   No scaling, stretching, clipping or replacement backgrounds. */
+/* Bottom Grassland.png is a 192x128 sheet containing 32x32 autotiles.
+   Every tile is shown at native pixel size with no scaling or interpolation. */
 .terrain-floor-tile {
   position: absolute;
+  display: block;
   width: 32px;
   height: 32px;
-  max-width: none;
-  max-height: none;
   margin: 0;
   padding: 0;
   transform: translate(-50%, -50%);
   transform-origin: center;
-  object-fit: none;
+  background-image: url("./Bottom%20Grassland.png");
+  background-repeat: no-repeat;
+  background-size: 192px 128px;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   pointer-events: none;
   user-select: none;
-  -webkit-user-drag: none;
 }
 
 /* During the floor pass, no legacy map art is allowed to sit above the new
