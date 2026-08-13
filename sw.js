@@ -1,4 +1,4 @@
-const CACHE_NAME = "pawborough-v72";
+const CACHE_NAME = "pawborough-v80";
 const ASSETS = [
   "./",
   "./index.html",
@@ -25,12 +25,6 @@ const ASSETS = [
   "./kennel_lvl4.png",
   "./kennel_lvl5.png",
   "./kennel_lvl6.png",
-  "./stick_storage_lvl1.png",
-  "./stick_storage_lvl2.png",
-  "./stick_storage_lvl3.png",
-  "./stick_storage_lvl4.png",
-  "./stick_storage_lvl5.png",
-  "./stick_storage_lvl6.png",
   "./kitchen_lvl1.png",
   "./kitchen_lvl2.png",
   "./kitchen_lvl3.png",
@@ -56,106 +50,11 @@ const ASSETS = [
   "./tile_052.png",
   "./wolf/no shadow & effects/wolf-idle.png",
   "./wolf/no shadow & effects/wolf-run.png",
-  "./wolf/no shadow & effects/wolf-howl.png",
-  "./wolf/no shadow & effects/wolf-bite.png",
-  "./wolf/no shadow & effects/wolf-death.png",
-  "./assets/world/fence_axis_x.png",
-  "./assets/world/fence_axis_y.png",
-  "./assets/world/fence_corner_bottom.png",
-  "./assets/world/fence_corner_left.png",
-  "./assets/world/fence_corner_right.png",
-  "./assets/world/fence_corner_top.png",
-  "./assets/world/fence_post_tile.png",
-  "./assets/world/fence_rail_x_tile.png",
-  "./assets/world/fence_rail_y_tile.png",
-  "./assets/world/town-board.png",
-  "./assets/buildings/adoption.png",
-  "./assets/buildings/donation.png",
-  "./assets/buildings/food.png",
-  "./assets/buildings/groom.png",
-  "./assets/buildings/hq.png",
-  "./assets/buildings/kennel.png",
-  "./assets/buildings/kennel-lvl1.png",
-  "./assets/buildings/kennel-lvl2.png",
-  "./assets/buildings/kennel-lvl3.png",
-  "./assets/buildings/kennel-lvl4.png",
-  "./assets/buildings/kennel-lvl5.png",
-  "./assets/buildings/kennel-lvl6.png",
-  "./assets/buildings/kennel-lvl7.png",
-  "./assets/buildings/construction-1x1.png",
-  "./assets/buildings/construction-2x1.png",
-  "./assets/buildings/construction-2x2.png",
-  "./assets/buildings/construction-3x2.png",
-  "./assets/buildings/construction-3x3.png",
-  "./assets/buildings/construction-4x3.png",
-  "./assets/buildings/upgrade-overlay-1x1.png",
-  "./assets/buildings/upgrade-overlay-2x1.png",
-  "./assets/buildings/upgrade-overlay-2x2.png",
-  "./assets/buildings/upgrade-overlay-3x2.png",
-  "./assets/buildings/upgrade-overlay-3x3.png",
-  "./assets/buildings/upgrade-overlay-4x3.png",
-  "./assets/buildings/park.png",
-  "./assets/buildings/staff.png",
-  "./assets/buildings/storage.png",
-  "./assets/buildings/training.png",
-  "./assets/buildings/vet.png",
-  "./assets/dogs/beagle.png",
-  "./assets/dogs/labrador.png",
-  "./assets/dogs/mixed.png",
-  "./assets/dogs/puppy.png",
-  "./assets/dogs/senior.png",
-  "./assets/dogs/terrier.png",
-  "./assets/icons/adopt.png",
-  "./assets/icons/build.png",
-  "./assets/icons/coins.png",
   "./assets/icons/dogs.png",
+  "./assets/icons/coins.png",
   "./assets/icons/food.png",
-  "./assets/icons/materials.png",
-  "./assets/icons/medicine.png",
-  "./assets/icons/reputation.png",
-  "./assets/icons/rescue.png",
-  "./assets/icons/staff.png",
-  "./assets/ui/adopt.png",
-  "./assets/ui/build.png",
-  "./assets/ui/building-popup-template.png",
-  "./assets/ui/button-close-raster-v2.png",
-  "./assets/ui/button-move-raster.png",
-  "./assets/ui/button-start-upgrade.png",
-  "./assets/ui/dogs.png",
-  "./assets/ui/rescue.png",
-  "./assets/ui/staff.png",
-  "./assets/art-templates/footprint-templates.json",
-  "./assets/art-templates/footprint-1x1-guide.png",
-  "./assets/art-templates/footprint-2x1-guide.png",
-  "./assets/art-templates/footprint-2x2-guide.png",
-  "./assets/art-templates/footprint-3x2-guide.png",
-  "./assets/art-templates/footprint-3x3-guide.png",
-  "./assets/art-templates/footprint-4x3-guide.png"
+  "./assets/icons/materials.png"
 ];
-
-self.addEventListener("install", (event) => {
-  self.skipWaiting();
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
-});
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
-    )
-  );
-  self.clients.claim();
-});
-
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
-});
+self.addEventListener("install",(event)=>{self.skipWaiting();event.waitUntil(caches.open(CACHE_NAME).then((cache)=>cache.addAll(ASSETS)));});
+self.addEventListener("activate",(event)=>{event.waitUntil(caches.keys().then((keys)=>Promise.all(keys.filter((key)=>key!==CACHE_NAME).map((key)=>caches.delete(key)))));self.clients.claim();});
+self.addEventListener("fetch",(event)=>{if(event.request.method!=="GET")return;event.respondWith(fetch(event.request).then((response)=>{const copy=response.clone();caches.open(CACHE_NAME).then((cache)=>cache.put(event.request,copy));return response;}).catch(()=>caches.match(event.request)));});
