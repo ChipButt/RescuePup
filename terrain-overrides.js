@@ -16,7 +16,16 @@
   const OUTSIDE_CLEARANCE_TILES = 3;
   const WOOD_SOURCE_COUNT = 20;
   const WOOD_SOURCE_SCALE = 0.5;
-  const DEPTH_BASE = 100;
+
+  // Ground tiles deliberately use a small, self-contained depth range.
+  // The top corner is the lowest layer and the bottom corner is the highest.
+  // World objects sit above the ground range but still sort by the same diagonal.
+  const TERRAIN_DEPTH_BASE = 10;
+  const TERRAIN_DEPTH_STEP = 10;
+  const OBJECT_DEPTH_BASE = 1000;
+
+  let lastMapSignature = null;
+  const preloadedImages = [];
 
   function stableHash(x, y, salt = 0) {
     let value = Math.imul((x | 0) ^ 0x45d9f3b, 0x27d4eb2d);
@@ -32,10 +41,36 @@
     return items[stableHash(x, y, salt) % items.length];
   }
 
-  function depthZ(position, layer = 0) {
-    // Projected screen Y is the authoritative isometric depth. This means
-    // anything lower on screen is always drawn in front of anything higher.
-    return DEPTH_BASE + Math.round(position.y) * 10 + layer;
+  function terrainDepth(worldX, worldY, frame) {
+    // Exact isometric tile-stack order: minX/minY (the top corner) is at the
+    // back. Every step toward the bottom corner raises the layer. This makes
+    // the lowest visible tile the topmost terrain layer.
+    const diagonal =
+      (worldX - frame.minX) +
+      (worldY - frame.minY);
+    return TERRAIN_DEPTH_BASE + diagonal * TERRAIN_DEPTH_STEP;
+  }
+
+  function objectDepth(worldX, worldY, frame, layer = 0) {
+    const diagonal =
+      (worldX - frame.minX) +
+      (worldY - frame.minY);
+    return OBJECT_DEPTH_BASE + diagonal * TERRAIN_DEPTH_STEP + layer;
+  }
+
+  function preloadTerrainAssets() {
+    const sources = [
+      BUILDABLE_TILE,
+      ...OUTSIDE_TILES,
+      ...WOOD_SOURCE_TILES,
+      WOLF_IDLE_SHEET
+    ];
+    sources.forEach((src) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = src;
+      preloadedImages.push(image);
+    });
   }
 
   function isBuildableCell(area, worldX, worldY) {
@@ -73,6 +108,39 @@
     return { width, height, minX, minY, maxX, maxY, columns, rows, offsetX, offsetY };
   }
 
+  function mapRenderSignature() {
+    const area = currentArea();
+    const buildings = state.buildings.map((building) => [
+      building.id,
+      building.type,
+      building.level || 1,
+      building.status || "ready",
+      building.worldX,
+      building.worldY,
+      building.upgrade?.toLevel || null
+    ]);
+    const dogs = state.dogs.map((dog) => dog.id);
+    const placement = placementMode
+      ? [
+          placementMode.action,
+          placementMode.type,
+          placementMode.buildingId || null,
+          placementMode.worldX,
+          placementMode.worldY,
+          Boolean(placementMode.hasDragged)
+        ]
+      : null;
+
+    return JSON.stringify({
+      area: [area.minX, area.minY, area.maxX, area.maxY],
+      buildings,
+      dogs,
+      selectedBuildingId: selectedBuildingId || null,
+      placement,
+      mapPopup: mapPopup || null
+    });
+  }
+
   function applyGroundTiles(grid, area, frame) {
     const cells = [...grid.querySelectorAll(".layout-cell")];
     cells.forEach((cell, index) => {
@@ -82,18 +150,13 @@
       const tile = inBuildArea
         ? BUILDABLE_TILE
         : pickByHash(OUTSIDE_TILES, worldX, worldY, 37);
-      const position = layoutIsoProject(
-        worldX + 0.5,
-        worldY + 0.5,
-        frame.offsetX,
-        frame.offsetY
-      );
 
       cell.style.setProperty("--terrain-tile", `url("${tile}")`);
-      cell.style.zIndex = String(depthZ(position, 0));
+      cell.style.zIndex = String(terrainDepth(worldX, worldY, frame));
       cell.dataset.terrainTile = tile.replace("./", "");
       cell.dataset.terrainWorldX = String(worldX);
       cell.dataset.terrainWorldY = String(worldY);
+      cell.dataset.terrainDepth = String(terrainDepth(worldX, worldY, frame));
     });
   }
 
@@ -105,19 +168,16 @@
       const height = Number(element.dataset.gridHeight);
       if (![worldX, worldY, width, height].every(Number.isFinite)) return;
 
-      const anchor = layoutIsoProject(
-        worldX + width,
-        worldY + height,
-        frame.offsetX,
-        frame.offsetY
+      element.style.zIndex = String(
+        objectDepth(worldX + width, worldY + height, frame, 6)
       );
-      element.style.zIndex = String(depthZ(anchor, 6));
     });
 
     grid.querySelectorAll(".layout-fence").forEach((element) => {
       const screenY = Number.parseFloat(element.style.top);
       if (!Number.isFinite(screenY)) return;
-      element.style.zIndex = String(depthZ({ y: screenY }, 5));
+      // Convert the already-projected Y back to a stable high object layer.
+      element.style.zIndex = String(OBJECT_DEPTH_BASE + Math.round(screenY) * 10 + 5);
     });
   }
 
@@ -179,7 +239,7 @@
       img.style.top = `${roundCss(position.y)}px`;
       img.style.width = `${roundCss(LAYOUT_ISO_TILE_WIDTH * WOOD_SOURCE_SCALE)}px`;
       img.style.height = `${roundCss(LAYOUT_ISO_TILE_WIDTH * WOOD_SOURCE_SCALE)}px`;
-      img.style.zIndex = String(depthZ(position, 4));
+      img.style.zIndex = String(objectDepth(source.worldX, source.worldY, frame, 4));
       grid.appendChild(img);
     });
   }
@@ -219,7 +279,7 @@
       button.setAttribute("aria-label", dog.name);
       button.style.left = `${roundCss(position.x)}px`;
       button.style.top = `${roundCss(position.y)}px`;
-      button.style.zIndex = String(depthZ(position, 7));
+      button.style.zIndex = String(objectDepth(cell.worldX, cell.worldY, frame, 7));
       button.style.setProperty("--wolf-sheet", `url("${WOLF_IDLE_SHEET}")`);
       button.style.setProperty("--wolf-row", `${(index % 2) * -48}px`);
       button.innerHTML = '<span class="map-wolf-sprite" aria-hidden="true"></span>';
@@ -227,24 +287,56 @@
     });
   }
 
+  function refreshWorkProgressWithoutMapRebuild() {
+    state.buildings.forEach((building) => {
+      if (!hasBuildingWorkInProgress(building)) return;
+      const host = [...els.townMap.querySelectorAll("[data-building-id]")]
+        .find((element) => element.dataset.buildingId === building.id);
+      const badge = host?.querySelector(".layout-work-progress");
+      if (!badge) return;
+      const progress = buildingProgress(building);
+      badge.style.setProperty("--progress-deg", `${buildingProgressDegrees(building)}deg`);
+      const value = badge.querySelector("b");
+      if (value) value.textContent = `${progress}%`;
+    });
+  }
+
   function decorateTerrain() {
     const grid = els?.townMap?.querySelector(".layout-grid");
-    if (!grid) return;
+    if (!grid || grid.dataset.rescuepupTerrainDecorated === "true") return;
     const area = currentArea();
     const frame = layoutFrame(area);
     applyGroundTiles(grid, area, frame);
     applyExistingMapObjectDepths(grid, frame);
     addWoodSources(grid, area, frame);
     addWolfDogs(grid, area, frame);
+    grid.dataset.rescuepupTerrainDecorated = "true";
   }
+
+  preloadTerrainAssets();
 
   const originalRenderMap = renderMap;
   renderMap = function renderMapWithSuppliedTerrainAssets(...args) {
+    const nextSignature = mapRenderSignature();
+    const existingGrid = els?.townMap?.querySelector(".layout-grid");
+
+    // render() is called by the six-second passive game tick and every second
+    // while a building is under construction. If the map structure has not
+    // changed, leave the existing DOM and decoded images untouched. This is
+    // what removes the terrain/dog/wood flash caused by rebuilding innerHTML.
+    if (existingGrid && nextSignature === lastMapSignature) {
+      refreshWorkProgressWithoutMapRebuild();
+      return;
+    }
+
     originalRenderMap(...args);
     decorateTerrain();
+    lastMapSignature = nextSignature;
+    refreshWorkProgressWithoutMapRebuild();
   };
 
   // app.js performs its first render before this deferred override executes.
-  // Refresh only the map once so the supplied art is visible immediately.
+  // Refresh the map once so the supplied artwork is installed, then subsequent
+  // passive ticks keep this same DOM alive until the map actually changes.
   renderMap();
 })();
