@@ -1,4 +1,4 @@
-const CACHE_NAME = "pawborough-v69";
+const CACHE_NAME = "pawborough-v70";
 const ASSETS = [
   "./",
   "./index.html",
@@ -18,6 +18,36 @@ const ASSETS = [
   "./fence_straight_NW.png",
   "./fence_straight_SE.png",
   "./fence_straight_SW.png",
+  "./kennel_lvl1.png",
+  "./kennel_lvl2.png",
+  "./kennel_lvl3.png",
+  "./kennel_lvl4.png",
+  "./kennel_lvl5.png",
+  "./kennel_lvl6.png",
+  "./stick_storage_lvl1.png",
+  "./stick_storage_lvl2.png",
+  "./stick_storage_lvl3.png",
+  "./stick_storage_lvl4.png",
+  "./stick_storage_lvl5.png",
+  "./stick_storage_lvl6.png",
+  "./kitchen_lvl1.png",
+  "./kitchen_lvl2.png",
+  "./kitchen_lvl3.png",
+  "./kitchen_lvl4.png",
+  "./kitchen_lvl5.png",
+  "./kitchen_lvl6.png",
+  "./crop_farm_lvl1.png",
+  "./crop_farm_lvl2.png",
+  "./crop_farm_lvl3.png",
+  "./crop_farm_lvl4.png",
+  "./crop_farm_lvl5.png",
+  "./crop_farm_lvl6.png",
+  "./protein_farm_lvl1.png",
+  "./protein_farm_lvl2.png",
+  "./protein_farm_lvl3.png",
+  "./protein_farm_lvl4.png",
+  "./protein_farm_lvl5.png",
+  "./protein_farm_lvl6.png",
   "./tile_048.png",
   "./tile_049.png",
   "./tile_050.png",
@@ -104,9 +134,7 @@ const ASSETS = [
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
 });
 
 self.addEventListener("activate", (event) => {
