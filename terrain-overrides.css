@@ -1,3 +1,4 @@
+@import url("./popup-layout.css?v=82");
 /* Approved terrain, fence and current building sprite renderer. */
 .town-map.terrain-floor-mode{position:relative;overflow:hidden;background:#1d331f}
 .terrain-floor-world{position:absolute;inset:0;overflow:hidden;pointer-events:auto;user-select:none;isolation:isolate}
