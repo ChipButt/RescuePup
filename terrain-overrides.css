@@ -15,8 +15,7 @@
   isolation: isolate;
 }
 
-/* Bottom Grassland.png is a 192x128 sheet containing 32x32 autotiles.
-   Every tile is shown at native pixel size with no scaling or interpolation. */
+/* Both supplied terrain sheets are 192x128 sheets of native 32x32 autotiles. */
 .terrain-floor-tile {
   position: absolute;
   display: block;
@@ -26,7 +25,6 @@
   padding: 0;
   transform: translate(-50%, -50%);
   transform-origin: center;
-  background-image: url("./Bottom%20Grassland.png");
   background-repeat: no-repeat;
   background-size: 192px 128px;
   image-rendering: pixelated;
@@ -35,9 +33,35 @@
   user-select: none;
 }
 
-/* During the floor pass, no legacy map art is allowed to sit above the new
-   terrain geometry. Buildings, fences, dogs and resource props will be added
-   back one system at a time after the floor is approved. */
+.outside-floor-tile {
+  background-image: url("./Bottom%20Grassland.png");
+}
+
+.buildable-floor-tile {
+  background-image: url("./Bottom%20Grassland%20Dry.png");
+}
+
+/* Fence definitions are authored against the native 32x32 build autotiles.
+   JS positions each sprite from the tile's top-left plus the saved offset. */
+.terrain-fence-piece {
+  position: absolute;
+  display: block;
+  width: 32px;
+  height: 32px;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  object-fit: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* During the floor pass, legacy map artwork remains hidden. The approved new
+   terrain/fence system is rendered by terrain-overrides.js. */
 .terrain-floor-mode .layout-grid,
 .terrain-floor-mode .layout-cell,
 .terrain-floor-mode .layout-grid-lines,
