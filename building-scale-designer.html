@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RescuePup Building Scale Designer</title>
+<style>
+:root{--ink:#263c46;--dark:#17282e;--mid:#274149;--cream:#fff8d7;--gold:#f2c854;--line:#d8c68b;--green:#77b56c}
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:Inter,system-ui,-apple-system,sans-serif;background:#edf3e8;color:#24353a}
+body{overflow:hidden}
+.app{display:grid;grid-template-columns:330px 1fr;height:100vh}
+.sidebar{background:linear-gradient(#182c32,#213940);color:var(--cream);padding:16px;overflow:auto;border-right:3px solid #cfb76d}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:14px}.paw{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:#49320c;font-weight:1000}
+.brand h1{font-size:18px;margin:0}.brand p{margin:2px 0 0;font-size:11px;color:#c8d5cd}
+label{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#e8cf79;margin:12px 0 5px}
+select,input,button,textarea{font:inherit}
+select,input[type=number]{width:100%;background:#fdf8df;color:#1e3439;border:2px solid #a88c43;border-radius:8px;padding:8px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.triple{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.control-card{border:1px solid #557078;background:#1e343a;border-radius:12px;padding:10px;margin-top:10px}
+.bigval{display:grid;grid-template-columns:36px 1fr 36px;gap:6px;align-items:center}.bigval button{height:36px}
+button{border:0;border-radius:8px;padding:9px 10px;font-weight:900;cursor:pointer;background:#d9e2d8;color:#24373b}
+button.primary{background:var(--gold);color:#4a330c;box-shadow:inset 0 0 0 2px #ffe99a}
+button.secondary{background:#38545c;color:#fff8d7;border:1px solid #62777d}
+button.danger{background:#9c4534;color:#fff5dc}
+.help{font-size:11px;line-height:1.4;color:#c7d4cc;margin:10px 0}
+.notice{background:#11242a;border:1px solid #526d72;border-radius:9px;padding:9px;font-size:10px;line-height:1.45;color:#dce6de}
+.stage-shell{position:relative;min-width:0;overflow:hidden;background:#24343a}
+.toolbar{position:absolute;z-index:50;top:10px;left:10px;right:10px;display:flex;gap:8px;align-items:center;pointer-events:none}
+.toolbar>*{pointer-events:auto}.chip{background:#16272d;color:#fff8d7;border:1px solid #d8c68b;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800}
+.stage{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:grab;background:radial-gradient(circle at 50% 45%,rgba(114,160,112,.16),transparent 42%),linear-gradient(#22363a,#18282d)}
+.stage.panning{cursor:grabbing}
+.world{position:absolute;width:700px;height:520px;left:50%;top:50%;transform-origin:350px 260px}
+.tile{position:absolute;width:32px;height:16px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#5b965d;outline:1px solid rgba(255,255,255,.15)}
+.tile.foot{background:#b4934f;box-shadow:inset 0 0 0 1px #f6d87b}.tile.axis{filter:brightness(1.15)}
+.anchor-dot{position:absolute;width:5px;height:5px;border-radius:50%;background:#ffdf68;transform:translate(-50%,-50%);z-index:9000;box-shadow:0 0 0 1px #3a2b08}
+.building-wrap{position:absolute;z-index:5000;transform:translate(-50%,-100%);touch-action:none;cursor:move}
+.building{display:block;width:100%;height:100%;image-rendering:pixelated;pointer-events:none;user-select:none;-webkit-user-drag:none}
+.scale-handle{position:absolute;width:10px;height:10px;border-radius:50%;right:-6px;top:-6px;background:#ffdf68;border:2px solid #523d0d;cursor:nwse-resize;pointer-events:auto}
+.dog{position:absolute;width:32px;height:32px;transform:translate(-50%,-72%);background-repeat:no-repeat;image-rendering:pixelated;z-index:8000;pointer-events:none}
+.dog-label{position:absolute;transform:translate(-50%,5px);font-size:4px;font-weight:900;color:#fff8d7;text-shadow:0 1px 1px #000;white-space:nowrap;z-index:9001}
+.legend{position:absolute;left:12px;bottom:12px;background:rgba(16,31,35,.9);border:1px solid #cdbb7e;border-radius:10px;padding:8px 10px;color:#fff8d7;font-size:10px;line-height:1.5}
+.json-preview{height:120px;width:100%;resize:vertical;background:#102328;color:#dfeadf;border:1px solid #557078;border-radius:8px;padding:8px;font:10px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace}
+@media(max-width:780px){.app{grid-template-columns:1fr;grid-template-rows:340px 1fr}.sidebar{border-right:0;border-bottom:3px solid #cfb76d}.stage-shell{min-height:0}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="paw">🐾</div><div><h1>Building Scale Designer</h1><p>Final runtime scale + dog references</p></div></div>
+  <div class="notice"><b>Dogs are locked to the game's real 32px display size.</b> Resize and move only the building. Exported scale values are FINAL runtime scale values, so no extra 0.88 multiplier should be applied when these values are imported into the game.</div>
+  <label>Building</label><select id="building"></select>
+  <div class="row"><div><label>Level</label><select id="level"></select></div><div><label>Dog breed</label><select id="breed"></select></div></div>
+  <div class="control-card">
+    <label style="margin-top:0">Scale</label>
+    <div class="bigval"><button id="scaleDown">−</button><input id="scale" type="number" min=".2" max="3" step=".01"><button id="scaleUp">+</button></div>
+    <label>Offset X</label><div class="bigval"><button data-nudge="-1,0">←</button><input id="offsetX" type="number" step=".25"><button data-nudge="1,0">→</button></div>
+    <label>Offset Y</label><div class="bigval"><button data-nudge="0,-1">↑</button><input id="offsetY" type="number" step=".25"><button data-nudge="0,1">↓</button></div>
+  </div>
+  <div class="row" style="margin-top:10px"><button class="secondary" id="resetCurrent">Reset current</button><button class="secondary" id="resetAll">Reset all</button></div>
+  <p class="help">Drag the <b>building</b> to reposition it. Drag the <b>yellow handle</b> to resize it. Drag empty map space to pan. Mouse-wheel/pinch-style wheel zooms around the pointer. Arrow keys nudge the building; Shift + arrows uses 1px steps.</p>
+  <label>JSON output</label><textarea class="json-preview" id="json" readonly></textarea>
+  <div class="row"><button class="primary" id="copyCurrent">Copy current</button><button class="primary" id="copyAll">Copy all</button></div>
+</aside>
+
+<main class="stage-shell">
+  <div class="toolbar">
+    <span class="chip" id="status"></span>
+    <button class="chip" id="zoomOut">Zoom −</button>
+    <button class="chip" id="zoomIn">Zoom +</button>
+    <button class="chip" id="resetView">Centre view</button>
+  </div>
+  <div class="stage" id="stage">
+    <div class="world" id="world"></div>
+    <div class="legend">Yellow diamonds = building footprint<br>Dogs = fixed 32px live-game reference size</div>
+  </div>
+</main>
+</div>
+<script>
+const BASE="https://raw.githubusercontent.com/ChipButt/RescuePup/main/";
+const RAW_DEFS={"Kennel":{"footprint":{"width":2,"height":2},"levels":{"1":{"asset":"kennel_lvl1.png","scale":1.144,"offsetX":-1.5,"offsetY":-6.69},"2":{"asset":"kennel_lvl2.png","scale":1.144,"offsetX":-2.68,"offsetY":-6.62},"3":{"asset":"kennel_lvl3.png","scale":1.144,"offsetX":-1.89,"offsetY":-6.77},"4":{"asset":"kennel_lvl4.png","scale":1.144,"offsetX":-1.7,"offsetY":-5.5},"5":{"asset":"kennel_lvl5.png","scale":1.1264,"offsetX":2.48,"offsetY":-3.55},"6":{"asset":"kennel_lvl6.png","scale":1.1,"offsetX":0.71,"offsetY":0.73}}},"Stick Storage":{"footprint":{"width":3,"height":2},"levels":{"1":{"asset":"stick_storage_lvl1.png","scale":0.88,"offsetX":0.49,"offsetY":-8.24},"2":{"asset":"stick_storage_lvl2.png","scale":1.056,"offsetX":0,"offsetY":-7.17},"3":{"asset":"stick_storage_lvl3.png","scale":1.1,"offsetX":-0.39,"offsetY":-5.72},"4":{"asset":"stick_storage_lvl4.png","scale":1.188,"offsetX":-3.09,"offsetY":-4.93},"5":{"asset":"stick_storage_lvl5.png","scale":1.232,"offsetX":-1.84,"offsetY":-3.58},"6":{"asset":"stick_storage_lvl6.png","scale":1.408,"offsetX":-2.63,"offsetY":-1.18}}},"Kitchen":{"footprint":{"width":3,"height":2},"levels":{"1":{"asset":"kitchen_lvl1.png","scale":0.88,"offsetX":-0.67,"offsetY":-9.29},"2":{"asset":"kitchen_lvl2.png","scale":0.88,"offsetX":0.57,"offsetY":-9.37},"3":{"asset":"kitchen_lvl3.png","scale":0.968,"offsetX":-1.11,"offsetY":-5.43},"4":{"asset":"kitchen_lvl4.png","scale":1.32,"offsetX":-2.79,"offsetY":-3.61},"5":{"asset":"kitchen_lvl5.png","scale":1.32,"offsetX":-2.8,"offsetY":-3.72},"6":{"asset":"kitchen_lvl6.png","scale":1.364,"offsetX":-2.42,"offsetY":-3.63}}},"Crop Farm":{"footprint":{"width":3,"height":2},"levels":{"1":{"asset":"crop_farm_lvl1.png","scale":0.88,"offsetX":-1.04,"offsetY":-7.72},"2":{"asset":"crop_farm_lvl2.png","scale":0.968,"offsetX":-2.72,"offsetY":-10.08},"3":{"asset":"crop_farm_lvl3.png","scale":1.012,"offsetX":-3.95,"offsetY":-9.07},"4":{"asset":"crop_farm_lvl4.png","scale":1.232,"offsetX":-3.61,"offsetY":-6.59},"5":{"asset":"crop_farm_lvl5.png","scale":1.276,"offsetX":0.24,"offsetY":-5.71},"6":{"asset":"crop_farm_lvl6.png","scale":1.32,"offsetX":0.13,"offsetY":-4.36}}},"Protein Farm":{"footprint":{"width":2,"height":2},"levels":{"1":{"asset":"protein_farm_lvl1.png","scale":0.704,"offsetX":-1.28,"offsetY":-3.3},"2":{"asset":"protein_farm_lvl2.png","scale":0.792,"offsetX":0.86,"offsetY":-2.17},"3":{"asset":"protein_farm_lvl3.png","scale":0.836,"offsetX":-0.16,"offsetY":-1.03},"4":{"asset":"protein_farm_lvl4.png","scale":0.88,"offsetX":-2.06,"offsetY":0.31},"5":{"asset":"protein_farm_lvl5.png","scale":0.88,"offsetX":-3.09,"offsetY":1.02},"6":{"asset":"protein_farm_lvl6.png","scale":0.88,"offsetX":-1.1,"offsetY":1.12}}}};
+const ORIGINAL=JSON.parse(JSON.stringify(RAW_DEFS));
+const BREEDS={"Golden Retriever":"wolf-all-golden-retriever.png","German Shepherd":"wolf-all-german-shepherd.png","Alaskan Malamute":"wolf-all-alaskan-malamute.png","Siberian Husky":"wolf-all-siberian-husky.png","Belgian Tervuren":"wolf-all-belgian-tervuren.png","Czechoslovakian Wolfdog":"wolf-all-czechoslovakian-wolfdog.png","Greenland Dog":"wolf-all-greenland-dog.png","White Swiss Shepherd":"wolf-all-white-swiss-shepherd.png"};
+const $=s=>document.querySelector(s);
+const buildingSel=$("#building"),levelSel=$("#level"),breedSel=$("#breed");
+const scaleInput=$("#scale"),oxInput=$("#offsetX"),oyInput=$("#offsetY"),jsonOut=$("#json"),world=$("#world"),stage=$("#stage");
+let zoom=3.2, panX=0, panY=15;
+let currentBuilding=Object.keys(RAW_DEFS)[0], currentLevel="1";
+let drag=null, dogFrame=0;
+function proj(x,y){return {x:350+(x-y)*16,y:205+(x+y)*8}}
+function footprintAnchor(w,h){const o=proj(0,0);return {x:o.x+((w-h)*16)/2,y:o.y+(w+h)*8}}
+function current(){return RAW_DEFS[currentBuilding].levels[currentLevel]}
+function applyWorldTransform(){world.style.transform=`translate(-50%,-50%) translate(${panX}px,${panY}px) scale(${zoom})`}
+function safeNum(v,f=0){const n=Number(v);return Number.isFinite(n)?n:f}
+function buildSelectors(){buildingSel.innerHTML=Object.keys(RAW_DEFS).map(n=>`<option>${n}</option>`).join("");levelSel.innerHTML=[1,2,3,4,5,6].map(n=>`<option value="${n}">Level ${n}</option>`).join("");breedSel.innerHTML=Object.keys(BREEDS).map(n=>`<option>${n}</option>`).join("");breedSel.value="Golden Retriever"}
+function tileMarkup(x,y,isFoot){const p=proj(x+.5,y+.5);return `<div class="tile ${isFoot?"foot":""}" style="left:${p.x-16}px;top:${p.y-8}px"></div>`}
+function dogMarkup(x,y,dir,label,index){const p=proj(x+.5,y+.5);return `<div class="dog dog-${index}" data-dir="${dir}" style="left:${p.x}px;top:${p.y}px"></div><div class="dog-label" style="left:${p.x}px;top:${p.y+16}px">${label}</div>`}
+function render(){const def=RAW_DEFS[currentBuilding],lv=current(),w=def.footprint.width,h=def.footprint.height;let html="";for(let y=-3;y<h+4;y++)for(let x=-3;x<w+4;x++)html+=tileMarkup(x,y,x>=0&&y>=0&&x<w&&y<h);html+=dogMarkup(-1,Math.max(0,h-1),3,"NE",0);html+=dogMarkup(Math.max(0,w-1),-1,0,"SW",1);html+=dogMarkup(w,0,2,"NW",2);html+=dogMarkup(0,h,1,"SE",3);const a=footprintAnchor(w,h),size=64*lv.scale;html+=`<div class="anchor-dot" style="left:${a.x+lv.offsetX}px;top:${a.y+lv.offsetY}px"></div>`;html+=`<div class="building-wrap" id="buildingWrap" style="left:${a.x+lv.offsetX}px;top:${a.y+lv.offsetY}px;width:${size}px;height:${size}px"><img class="building" src="${BASE}${lv.asset}" alt=""><span class="scale-handle" id="scaleHandle"></span></div>`;world.innerHTML=html;bindBuildingDrag();updateDogs();updateInputs();updateJSON();$("#status").textContent=`${currentBuilding} L${currentLevel} · ${w}×${h} · ${lv.scale.toFixed(2)} scale`;applyWorldTransform()}
+function updateInputs(){const lv=current();scaleInput.value=lv.scale.toFixed(4);oxInput.value=lv.offsetX.toFixed(2);oyInput.value=lv.offsetY.toFixed(2)}
+function exportPayload(onlyCurrent=false){const out={type:"rescuepup-building-footprint-definitions",version:3,nativeTile:{width:32,height:16},scaleMode:"final-runtime-scale-no-global-multiplier",definitions:{}};const names=onlyCurrent?[currentBuilding]:Object.keys(RAW_DEFS);for(const name of names){const b=RAW_DEFS[name],levels=onlyCurrent?[currentLevel]:Object.keys(b.levels);for(const L of levels){const v=b.levels[L];out.definitions[`${name}::L${L}`]={type:name,level:Number(L),asset:v.asset,footprint:{...b.footprint},anchor:"footprint-bottom-centre",scale:+v.scale.toFixed(4),offsetX:+v.offsetX.toFixed(2),offsetY:+v.offsetY.toFixed(2)}}}return out}
+function updateJSON(){jsonOut.value=JSON.stringify(exportPayload(true),null,2)}
+function updateDogs(){const asset=BREEDS[breedSel.value]||Object.values(BREEDS)[0];document.querySelectorAll(".dog").forEach(el=>{const dir=Number(el.dataset.dir)||0,frame=11+(dogFrame%4);el.style.backgroundImage=`url("${BASE}${asset}")`;el.style.backgroundSize="480px 512px";el.style.backgroundPosition=`${-frame*32}px ${-(12+dir)*32}px`})}
+setInterval(()=>{dogFrame=(dogFrame+1)%4;updateDogs()},320);
+function setCurrentFromInputs(){const lv=current();lv.scale=Math.max(.2,Math.min(3,safeNum(scaleInput.value,lv.scale)));lv.offsetX=safeNum(oxInput.value,lv.offsetX);lv.offsetY=safeNum(oyInput.value,lv.offsetY);render()}
+[scaleInput,oxInput,oyInput].forEach(el=>el.addEventListener("change",setCurrentFromInputs));buildingSel.addEventListener("change",()=>{currentBuilding=buildingSel.value;render()});levelSel.addEventListener("change",()=>{currentLevel=levelSel.value;render()});breedSel.addEventListener("change",updateDogs);$("#scaleDown").onclick=()=>{current().scale=Math.max(.2,current().scale-.02);render()};$("#scaleUp").onclick=()=>{current().scale=Math.min(3,current().scale+.02);render()};document.querySelectorAll("[data-nudge]").forEach(btn=>btn.onclick=()=>{const [x,y]=btn.dataset.nudge.split(",").map(Number);current().offsetX+=x*.25;current().offsetY+=y*.25;render()});$("#resetCurrent").onclick=()=>{RAW_DEFS[currentBuilding].levels[currentLevel]=JSON.parse(JSON.stringify(ORIGINAL[currentBuilding].levels[currentLevel]));render()};$("#resetAll").onclick=()=>{for(const k of Object.keys(ORIGINAL))RAW_DEFS[k]=JSON.parse(JSON.stringify(ORIGINAL[k]));render()};$("#zoomIn").onclick=()=>{zoom=Math.min(7,zoom+.35);applyWorldTransform()};$("#zoomOut").onclick=()=>{zoom=Math.max(.8,zoom-.35);applyWorldTransform()};$("#resetView").onclick=()=>{zoom=3.2;panX=0;panY=15;applyWorldTransform()};
+async function copy(obj){const text=JSON.stringify(obj,null,2);try{await navigator.clipboard.writeText(text)}catch{jsonOut.value=text;jsonOut.select();document.execCommand("copy")}}$("#copyCurrent").onclick=()=>copy(exportPayload(true));$("#copyAll").onclick=()=>copy(exportPayload(false));
+function bindBuildingDrag(){const wrap=$("#buildingWrap"),handle=$("#scaleHandle");if(!wrap)return;wrap.addEventListener("pointerdown",e=>{if(e.target===handle)return;e.preventDefault();e.stopPropagation();wrap.setPointerCapture(e.pointerId);drag={type:"building",x:e.clientX,y:e.clientY,ox:current().offsetX,oy:current().offsetY}});handle.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();handle.setPointerCapture(e.pointerId);const r=wrap.getBoundingClientRect(),ax=r.left+r.width/2,ay=r.bottom;drag={type:"scale",ax,ay,startDist:Math.max(1,Math.hypot(e.clientX-ax,e.clientY-ay)),startScale:current().scale}})}
+window.addEventListener("pointermove",e=>{if(!drag)return;if(drag.type==="building"){current().offsetX=drag.ox+(e.clientX-drag.x)/zoom;current().offsetY=drag.oy+(e.clientY-drag.y)/zoom;updateInputs();updateJSON();const def=RAW_DEFS[currentBuilding],a=footprintAnchor(def.footprint.width,def.footprint.height),lv=current(),wrap=$("#buildingWrap");wrap.style.left=(a.x+lv.offsetX)+"px";wrap.style.top=(a.y+lv.offsetY)+"px";const dot=$(".anchor-dot");dot.style.left=(a.x+lv.offsetX)+"px";dot.style.top=(a.y+lv.offsetY)+"px"}else if(drag.type==="scale"){const dist=Math.max(1,Math.hypot(e.clientX-drag.ax,e.clientY-drag.ay));current().scale=Math.max(.2,Math.min(3,drag.startScale*(dist/drag.startDist)));updateInputs();updateJSON();const wrap=$("#buildingWrap"),size=64*current().scale;wrap.style.width=size+"px";wrap.style.height=size+"px"}else if(drag.type==="pan"){panX=drag.px+(e.clientX-drag.x);panY=drag.py+(e.clientY-drag.y);applyWorldTransform()}});window.addEventListener("pointerup",()=>{drag=null;stage.classList.remove("panning")});stage.addEventListener("pointerdown",e=>{if(e.target.closest(".building-wrap"))return;drag={type:"pan",x:e.clientX,y:e.clientY,px:panX,py:panY};stage.classList.add("panning");stage.setPointerCapture(e.pointerId)});stage.addEventListener("wheel",e=>{e.preventDefault();const old=zoom;zoom=Math.max(.8,Math.min(7,zoom*(e.deltaY<0?1.08:.92)));const rect=stage.getBoundingClientRect(),mx=e.clientX-rect.left-rect.width/2,my=e.clientY-rect.top-rect.height/2;if(old!==zoom){panX=mx-(mx-panX)*(zoom/old);panY=my-(my-panY)*(zoom/old)}applyWorldTransform()},{passive:false});window.addEventListener("keydown",e=>{if(["INPUT","SELECT","TEXTAREA"].includes(document.activeElement?.tagName))return;if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)){e.preventDefault();const step=e.shiftKey?1:.25,lv=current();if(e.key==="ArrowLeft")lv.offsetX-=step;if(e.key==="ArrowRight")lv.offsetX+=step;if(e.key==="ArrowUp")lv.offsetY-=step;if(e.key==="ArrowDown")lv.offsetY+=step;render()}});
+buildSelectors();render();
+</script>
+</body>
+</html>
