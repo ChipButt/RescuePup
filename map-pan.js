@@ -2,8 +2,8 @@
 
 // Bounded drag camera for the Pawborough town map.
 // The camera may move only far enough that the outermost buildable tile centres
-// can be brought to the centre of the visible map. Building taps still work;
-// a pointer gesture only becomes a drag after a small movement threshold.
+// can be brought to the centre of the visible map. Building taps are never
+// pointer-captured; capture starts only once a real map drag has begun.
 (() => {
   const map = document.getElementById("town-map");
   if (!map) return;
@@ -22,11 +22,16 @@
     startPanX: 0,
     startPanY: 0,
     dragging: false,
+    captured: false,
     suppressClickUntil: 0
   };
 
   function clamp(value, minimum, maximum) {
     return Math.min(maximum, Math.max(minimum, value));
+  }
+
+  function placementActive() {
+    try { return Boolean(placementMode); } catch { return false; }
   }
 
   function worldLayer() {
@@ -38,6 +43,8 @@
     if (!world) return;
     world.style.setProperty("--map-pan-x", `${camera.x}px`);
     world.style.setProperty("--map-pan-y", `${camera.y}px`);
+    map.style.setProperty("--map-pan-x", `${camera.x}px`);
+    map.style.setProperty("--map-pan-y", `${camera.y}px`);
   }
 
   function tileCentre(tile, axis) {
@@ -66,8 +73,6 @@
     const centreX = map.clientWidth / 2;
     const centreY = map.clientHeight / 2;
 
-    // Negative X moves the map left until the rightmost buildable tile is centred.
-    // Positive X moves it right until the leftmost buildable tile is centred.
     camera.minX = centreX - rightmost;
     camera.maxX = centreX - leftmost;
     camera.minY = centreY - bottommost;
@@ -82,24 +87,25 @@
     requestAnimationFrame(() => requestAnimationFrame(measureCameraBounds));
   }
 
-  function endPointer(event) {
+  function clearPointer(event) {
     if (camera.pointerId !== event.pointerId) return;
-
-    if (camera.dragging) {
-      camera.suppressClickUntil = performance.now() + 350;
-    }
-
+    if (camera.dragging) camera.suppressClickUntil = performance.now() + 350;
     camera.pointerId = null;
     camera.dragging = false;
     map.classList.remove("map-dragging");
-
-    if (map.hasPointerCapture?.(event.pointerId)) {
+    if (camera.captured && map.hasPointerCapture?.(event.pointerId)) {
       map.releasePointerCapture(event.pointerId);
     }
+    camera.captured = false;
   }
 
   map.addEventListener("pointerdown", (event) => {
     if (!event.isPrimary || event.button !== 0 || camera.pointerId !== null) return;
+    if (placementActive()) return;
+    // A building tap belongs to the building. If the user wants to pan they can
+    // start the gesture on terrain; this prevents the popup click being stolen.
+    if (event.target.closest?.(".terrain-building-object")) return;
+    if (event.target.closest?.(".map-ui-overlay")) return;
 
     camera.pointerId = event.pointerId;
     camera.startClientX = event.clientX;
@@ -107,40 +113,41 @@
     camera.startPanX = camera.x;
     camera.startPanY = camera.y;
     camera.dragging = false;
-    map.setPointerCapture?.(event.pointerId);
+    camera.captured = false;
   });
 
   map.addEventListener("pointermove", (event) => {
-    if (camera.pointerId !== event.pointerId) return;
+    if (camera.pointerId !== event.pointerId || placementActive()) return;
 
     const deltaX = event.clientX - camera.startClientX;
     const deltaY = event.clientY - camera.startClientY;
-
     if (!camera.dragging && Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD_PX) return;
 
-    camera.dragging = true;
-    map.classList.add("map-dragging");
+    if (!camera.dragging) {
+      camera.dragging = true;
+      map.classList.add("map-dragging");
+      map.setPointerCapture?.(event.pointerId);
+      camera.captured = Boolean(map.hasPointerCapture?.(event.pointerId));
+    }
+
     camera.x = clamp(camera.startPanX + deltaX, camera.minX, camera.maxX);
     camera.y = clamp(camera.startPanY + deltaY, camera.minY, camera.maxY);
     applyCamera();
     event.preventDefault();
   }, { passive: false });
 
-  map.addEventListener("pointerup", endPointer);
-  map.addEventListener("pointercancel", endPointer);
+  map.addEventListener("pointerup", clearPointer);
+  map.addEventListener("pointercancel", clearPointer);
   map.addEventListener("lostpointercapture", (event) => {
-    if (camera.pointerId === event.pointerId) endPointer(event);
+    if (camera.pointerId === event.pointerId) clearPointer(event);
   });
 
-  // A drag that began on a building must not turn into a building tap on release.
   map.addEventListener("click", (event) => {
     if (performance.now() >= camera.suppressClickUntil) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);
 
-  // The terrain renderer replaces .terrain-floor-world when the yard changes,
-  // buildings change or the viewport resizes. Re-measure/reapply the camera then.
   const observer = new MutationObserver((mutations) => {
     if (mutations.some((mutation) => mutation.type === "childList")) scheduleMeasure();
   });
