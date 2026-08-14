@@ -3,6 +3,7 @@
 (() => {
   const BREEDS = Object.freeze([
     Object.freeze({ name: "Alaskan Malamute", asset: "./wolf-all-alaskan-malamute.png", note: "Strong, steady, and happiest with a job to do." }),
+    Object.freeze({ name: "Beagle", asset: "./wolf-all-beagle.webp", note: "Curious, cheerful, and always ready to follow an interesting scent." }),
     Object.freeze({ name: "Belgian Tervuren", asset: "./wolf-all-belgian-tervuren.png", note: "Alert, clever, and quick to learn the rescue routine." }),
     Object.freeze({ name: "Czechoslovakian Wolfdog", asset: "./wolf-all-czechoslovakian-wolfdog.png", note: "Athletic, observant, and always ready to explore." }),
     Object.freeze({ name: "German Shepherd", asset: "./wolf-all-german-shepherd.png", note: "Focused, dependable, and eager to help around the yard." }),
@@ -13,6 +14,7 @@
   ]);
 
   const known = new Set(BREEDS.map((breed) => breed.name));
+  const starterBeagle = BREEDS.find((breed) => breed.name === "Beagle");
 
   function stableHash(value) {
     let h = 2166136261;
@@ -42,6 +44,14 @@
 
   try {
     for (const dog of state?.dogs || []) {
+      // dog-1 is the starter dog created by app.js. Make the new Beagle
+      // immediately visible in existing saves as well as new games.
+      if (dog.id === "dog-1" && starterBeagle && dog.breed !== starterBeagle.name) {
+        dog.breed = starterBeagle.name;
+        changed = true;
+        continue;
+      }
+
       if (!known.has(dog.breed)) {
         const breed = breedForKey(dog.id || dog.name);
         dog.breed = breed.name;

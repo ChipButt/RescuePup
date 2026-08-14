@@ -16,4 +16,11 @@
   user-select:none;
   will-change:left,top,background-position;
 }
+/* The supplied Beagle source uses 48px frames rather than the 64px cells used
+   by the original breed sheets. wolf-all-beagle.webp is packed onto the same
+   15x16 / 64px-cell layout, so the worker's existing frame coordinates remain
+   authoritative and only the breed-specific image source needs overriding. */
+.dog-worker-sprite[data-breed="Beagle"]{
+  background-image:url("./wolf-all-beagle.webp")!important;
+}
 .town-map.map-dragging .dog-worker-sprite{pointer-events:none}
