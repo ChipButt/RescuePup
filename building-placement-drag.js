@@ -1,13 +1,6 @@
 "use strict";
 
-/*
-  Drag building placement for RescuePup.
-  - Normal building taps remain taps and open the approved JSON popup.
-  - Move mode keeps the original building fixed until a valid drop succeeds.
-  - The candidate footprint follows the pointer and is green/red live.
-  - Invalid drops show a short centred "Can't Move Here" message and keep
-    placement active without resetting the building or the pointer workflow.
-*/
+/* Drag/drop building placement, kept in screen sync with the zoomable map. */
 (() => {
   const map = document.getElementById("town-map");
   const overlay = document.getElementById("map-ui-overlay");
@@ -16,13 +9,13 @@
   let drag = null;
   const MOVE_THRESHOLD = 4;
 
-  function mode() {
+  const mode = () => {
     try { return placementMode || null; } catch { return null; }
-  }
-
-  function cameraPosition() {
-    return window.RescuePupMapCamera?.position || { x: 0, y: 0 };
-  }
+  };
+  const camera = () => ({
+    ...(window.RescuePupMapCamera?.position || { x: 0, y: 0 }),
+    zoom: window.RescuePupMapCamera?.zoom || 1
+  });
 
   function visualName(type) {
     if (type === "kennel") return "Kennel";
@@ -43,22 +36,22 @@
     const rect = map.getBoundingClientRect();
     const o = placementOffset();
     if (!o) return null;
-    const camera = cameraPosition();
-    const localX = clientX - rect.left - camera.x - o.x;
-    const localY = clientY - rect.top - camera.y - o.y;
+    const c = camera();
+    // Inverse of: screen = pan + zoom * (terrainPoint + terrainOffset)
+    const layerX = (clientX - rect.left - c.x) / c.zoom;
+    const layerY = (clientY - rect.top - c.y) / c.zoom;
+    const localX = layerX - o.x;
+    const localY = layerY - o.y;
     const difference = localX / 16;
     const sum = localY / 8;
-    return {
-      x: (difference + sum) / 2,
-      y: (sum - difference) / 2
-    };
+    return { x: (difference + sum) / 2, y: (sum - difference) / 2 };
   }
 
   function boundedPlacementCell(worldX, worldY) {
-    const bounds = logicalWorldBounds();
+    const b = logicalWorldBounds();
     return {
-      x: Math.max(bounds.minX, Math.min(bounds.maxX - 1, Math.round(worldX))),
-      y: Math.max(bounds.minY, Math.min(bounds.maxY - 1, Math.round(worldY)))
+      x: Math.max(b.minX, Math.min(b.maxX - 1, Math.round(worldX))),
+      y: Math.max(b.minY, Math.min(b.maxY - 1, Math.round(worldY)))
     };
   }
 
@@ -70,18 +63,24 @@
     return Boolean(catalog && isFootprintOpen(catalog, m.worldX, m.worldY, exceptId));
   }
 
+  function screenPoint(worldX, worldY) {
+    const o = placementOffset();
+    if (!o || !window.RescuePupTerrain) return null;
+    const c = camera();
+    const p = window.RescuePupTerrain.point(worldX, worldY);
+    return { x: c.x + (p.x + o.x) * c.zoom, y: c.y + (p.y + o.y) * c.zoom };
+  }
+
   function footprintMarkup(catalog, valid) {
     const m = mode();
-    const o = placementOffset();
-    if (!m || !o || !window.RescuePupTerrain) return "";
-    const camera = cameraPosition();
+    const c = camera();
+    if (!m) return "";
     const cells = [];
     for (let y = 0; y < catalog.footprintHeight; y += 1) {
       for (let x = 0; x < catalog.footprintWidth; x += 1) {
-        const worldX = m.worldX + x;
-        const worldY = m.worldY + y;
-        const p = window.RescuePupTerrain.point(worldX + 0.5, worldY + 0.5);
-        cells.push(`<span class="placement-highlight-cell ${valid ? "valid" : "invalid"}" style="left:${p.x + o.x + camera.x}px;top:${p.y + o.y + camera.y}px"></span>`);
+        const p = screenPoint(m.worldX + x + 0.5, m.worldY + y + 0.5);
+        if (!p) continue;
+        cells.push(`<span class="placement-highlight-cell ${valid ? "valid" : "invalid"}" style="left:${p.x}px;top:${p.y}px;width:${32 * c.zoom}px;height:${16 * c.zoom}px"></span>`);
       }
     }
     return cells.join("");
@@ -93,42 +92,32 @@
     const registry = window.RescuePupBuildingSprites;
     if (!m || !o || !registry || !window.RescuePupTerrain) return "";
 
-    const building = m.action === "move"
-      ? state.buildings.find((item) => item.id === m.buildingId)
-      : null;
+    const building = m.action === "move" ? state.buildings.find((item) => item.id === m.buildingId) : null;
     const level = m.action === "move" ? buildingLevel(building) : 1;
     const def = registry[visualName(catalog.type)]?.levels?.[String(level)];
     if (!def) return "";
 
-    const camera = cameraPosition();
-    const anchor = window.RescuePupTerrain.footprintBottomCentre(
-      m.worldX,
-      m.worldY,
-      catalog.footprintWidth,
-      catalog.footprintHeight
-    );
-    const size = 64 * Number(def.scale || 1);
-    const left = anchor.x + o.x + camera.x + Number(def.offsetX || 0) - size / 2;
-    const top = anchor.y + o.y + camera.y + Number(def.offsetY || 0) - size;
+    const c = camera();
+    const anchor = window.RescuePupTerrain.footprintBottomCentre(m.worldX, m.worldY, catalog.footprintWidth, catalog.footprintHeight);
+    const nativeSize = 64 * Number(def.scale || 1);
+    const worldLeft = anchor.x + o.x + Number(def.offsetX || 0) - nativeSize / 2;
+    const worldTop = anchor.y + o.y + Number(def.offsetY || 0) - nativeSize;
+    const left = c.x + worldLeft * c.zoom;
+    const top = c.y + worldTop * c.zoom;
+    const size = nativeSize * c.zoom;
     return `<img class="placement-building-preview drag-preview ${valid ? "valid" : "invalid"}" src="${buildingSpritePath(catalog.type, level)}" alt="" draggable="false" style="left:${left}px;top:${top}px;width:${size}px;height:${size}px" />`;
   }
 
   function placementBanner(catalog, valid) {
     const m = mode();
-    return `<div class="placement-banner ${valid ? "valid" : "invalid"}">
-      <strong>${m?.action === "move" ? "Move" : "Place"} ${catalog.name}</strong>
-      <span>${valid ? "Drag it into position. Green means it can be placed here." : "Red means this position cannot be used."}</span>
-      <div class="placement-actions">
-        <button type="button" class="placement-round-button confirm" data-confirm-placement aria-label="Confirm"><img src="./assets/ui/button-confirm-raster.png" alt="" /></button>
-        <button type="button" class="placement-round-button cancel" data-cancel-placement aria-label="Cancel"><img src="./assets/ui/button-cancel-raster.png" alt="" /></button>
-      </div>
-    </div>`;
+    return `<div class="placement-banner ${valid ? "valid" : "invalid"}"><strong>${m?.action === "move" ? "Move" : "Place"} ${catalog.name}</strong><span>${valid ? "Drag it into position. Green means it can be placed here." : "Red means this position cannot be used."}</span><div class="placement-actions"><button type="button" class="placement-round-button confirm" data-confirm-placement aria-label="Confirm"><img src="./assets/ui/button-confirm-raster.png" alt="" /></button><button type="button" class="placement-round-button cancel" data-cancel-placement aria-label="Cancel"><img src="./assets/ui/button-cancel-raster.png" alt="" /></button></div></div>`;
   }
 
   function hideMovingOriginal() {
     const m = mode();
     if (!m || m.action !== "move") return;
-    map.querySelector(`.terrain-building-object[data-building-id="${CSS.escape(m.buildingId)}"]`)?.classList.add("placement-source-hidden");
+    const node = [...map.querySelectorAll(".terrain-building-object[data-building-id]")].find((item) => item.dataset.buildingId === m.buildingId);
+    node?.classList.add("placement-source-hidden");
   }
 
   function refreshPlacementUi() {
@@ -148,19 +137,13 @@
     window.setTimeout(() => node.remove(), 900);
   }
 
-  // Replace the old full clickable grid with a pointer surface and only the
-  // current footprint highlight. This lets the building be dragged outside the
-  // build boundary so invalid positions can visibly turn red.
   renderPlacementGrid = function renderDragPlacementGrid() {
     const m = mode();
     if (!m) return "";
     const catalog = getCatalog(m.type);
     if (!catalog) return "";
     const valid = placementValidity();
-    return `<div class="placement-drag-surface" data-placement-drag-surface>
-      ${footprintMarkup(catalog, valid)}
-      ${previewMarkup(catalog, valid)}
-    </div>${placementBanner(catalog, valid)}`;
+    return `<div class="placement-drag-surface" data-placement-drag-surface>${footprintMarkup(catalog, valid)}${previewMarkup(catalog, valid)}</div>${placementBanner(catalog, valid)}`;
   };
 
   setPlacementCell = function setDragPlacementCell(worldX, worldY) {
@@ -177,15 +160,7 @@
     const building = state.buildings.find((item) => item.id === buildingId);
     if (!building) return;
     selectedBuildingId = null;
-    placementMode = {
-      action: "move",
-      type: building.type,
-      buildingId,
-      worldX: building.worldX,
-      worldY: building.worldY,
-      originalWorldX: building.worldX,
-      originalWorldY: building.worldY
-    };
+    placementMode = { action: "move", type: building.type, buildingId, worldX: building.worldX, worldY: building.worldY, originalWorldX: building.worldX, originalWorldY: building.worldY };
     state.screen = "home";
     closeBuildSheet();
     refreshPlacementUi();
@@ -217,11 +192,11 @@
     }
 
     if (m.action === "move") {
-      const id = m.buildingId;
-      const building = state.buildings.find((item) => item.id === id);
+      const building = state.buildings.find((item) => item.id === m.buildingId);
       if (!building) return cancelPlacement();
       building.worldX = m.worldX;
       building.worldY = m.worldY;
+      const id = building.id;
       placementMode = null;
       selectedBuildingId = id;
       map.classList.remove("building-placement-active", "building-placement-dragging");
@@ -235,15 +210,7 @@
       return toast(`Need ${costText(catalog.cost)}`);
     }
     spend(catalog.cost);
-    const building = normalizeBuilding({
-      id: `b-${catalog.type}-${Date.now()}`,
-      type: catalog.type,
-      level: 1,
-      status: "ready",
-      worldX: m.worldX,
-      worldY: m.worldY,
-      ...(catalog.type === "storage" ? { storedUnits: 0, maxCapacity: storageCapacity(1) } : {})
-    });
+    const building = normalizeBuilding({ id: `b-${catalog.type}-${Date.now()}`, type: catalog.type, level: 1, status: "ready", worldX: m.worldX, worldY: m.worldY, ...(catalog.type === "storage" ? { storedUnits: 0, maxCapacity: storageCapacity(1) } : {}) });
     state.buildings.push(building);
     placementMode = null;
     selectedBuildingId = building.id;
@@ -258,18 +225,9 @@
     if (event.target.closest("[data-confirm-placement],[data-cancel-placement]")) return;
     const surface = event.target.closest("[data-placement-drag-surface]");
     if (!surface) return;
-
     const point = mapWorldPoint(event.clientX, event.clientY);
     if (!point) return;
-    drag = {
-      pointerId: event.pointerId,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      grabX: point.x - m.worldX,
-      grabY: point.y - m.worldY,
-      moved: false,
-      action: m.action
-    };
+    drag = { pointerId: event.pointerId, startClientX: event.clientX, startClientY: event.clientY, grabX: point.x - m.worldX, grabY: point.y - m.worldY, moved: false, action: m.action };
     surface.setPointerCapture?.(event.pointerId);
     map.classList.add("building-placement-dragging");
     event.preventDefault();
@@ -277,9 +235,7 @@
 
   overlay.addEventListener("pointermove", (event) => {
     if (!drag || drag.pointerId !== event.pointerId || !mode()) return;
-    if (!drag.moved && Math.hypot(event.clientX - drag.startClientX, event.clientY - drag.startClientY) >= MOVE_THRESHOLD) {
-      drag.moved = true;
-    }
+    if (!drag.moved && Math.hypot(event.clientX - drag.startClientX, event.clientY - drag.startClientY) >= MOVE_THRESHOLD) drag.moved = true;
     if (!drag.moved) return;
     const point = mapWorldPoint(event.clientX, event.clientY);
     if (!point) return;
@@ -293,28 +249,21 @@
     const wasMove = drag.action === "move";
     drag = null;
     map.classList.remove("building-placement-dragging");
-
     if (!moved || !mode()) return;
     if (!placementValidity()) {
       showCantMoveHere();
       refreshPlacementUi();
       return;
     }
-    // Moving a building is true drag/drop: a valid release completes the move.
-    // New construction still retains the explicit Confirm button.
     if (wasMove) confirmPlacement();
   }
-
   overlay.addEventListener("pointerup", finishDrag);
   overlay.addEventListener("pointercancel", (event) => {
-    if (drag?.pointerId === event.pointerId) {
-      drag = null;
-      map.classList.remove("building-placement-dragging");
-    }
+    if (drag?.pointerId !== event.pointerId) return;
+    drag = null;
+    map.classList.remove("building-placement-dragging");
   });
 
-  // Extra direct tap path for robustness. The document-level handler also does
-  // this, but this local listener ensures map-camera changes can never regress it.
   map.addEventListener("click", (event) => {
     if (mode()) return;
     const building = event.target.closest?.(".terrain-building-object[data-building-id]");
@@ -323,9 +272,15 @@
     renderMapUi();
   });
 
-  window.RescuePupPlacementDrag = Object.freeze({
-    get active() { return Boolean(mode()); },
-    get valid() { return placementValidity(); },
-    showCantMoveHere
-  });
+  // A zoom changes overlay screen coordinates while placement is active.
+  let lastZoom = 0;
+  function syncToCamera() {
+    const next = camera().zoom;
+    if (mode() && Math.abs(next - lastZoom) > 0.0001) refreshPlacementUi();
+    lastZoom = next;
+    requestAnimationFrame(syncToCamera);
+  }
+  requestAnimationFrame(syncToCamera);
+
+  window.RescuePupPlacementDrag = Object.freeze({ get active() { return Boolean(mode()); }, get valid() { return placementValidity(); }, showCantMoveHere });
 })();
