@@ -6,12 +6,12 @@
   One source owns:
     - isometric world geometry and buildable/outside terrain;
     - the 110-tile logical world padding around the CURRENT yard;
-    - fence placement and the two-tile gate;
-    - forest placement/density;
+    - fence placement and the two-tile front gate;
+    - forest placement/density and collection-tree selection;
     - final building footprint/scale/offset definitions.
 
   Terrain and forest are composed in one render pass after their assets are
-  preloaded. There is no second "floor extension" layer and no seam patch.
+  preloaded. There is no separate floor extension or terrain patch layer.
 */
 (() => {
   const map = document.getElementById("town-map");
@@ -36,8 +36,10 @@
     innerScatterMax: 9,
     greenBandMax: 25,
     denseTransitionMax: 35,
+    frontDryOnlyMax: 15,
     gapBiasWidth: 1,
-    gapDensityBonus: 0.015
+    gapDensityBonus: 0.015,
+    collectionTreeCount: 3
   });
 
   const TREE_ASSETS = Object.freeze({
@@ -78,44 +80,24 @@
   // FINAL runtime values exported by the user's building scale designer.
   const BUILDINGS = {
     "Kennel": makeBuilding("kennel", 2, 2, [
-      [0.85, -0.41, -6.7],
-      [0.85, -0.4, -6.7],
-      [0.85, -0.4, -6.7],
-      [0.85, -0.4, -6.7],
-      [0.85, -0.4, -6.7],
-      [0.85, -0.4, -6.7]
+      [0.85, -0.41, -6.7], [0.85, -0.4, -6.7], [0.85, -0.4, -6.7],
+      [0.85, -0.4, -6.7], [0.85, -0.4, -6.7], [0.85, -0.4, -6.7]
     ]),
     "Stick Storage": makeBuilding("stick_storage", 3, 2, [
-      [0.85, 0.25, -9.5],
-      [0.85, 0.25, -9.5],
-      [0.85, 0.25, -9.5],
-      [0.85, -1.25, -9.44],
-      [0.9, 0.25, -9.5],
-      [0.95, -2.25, -9.5]
+      [0.85, 0.25, -9.5], [0.85, 0.25, -9.5], [0.85, 0.25, -9.5],
+      [0.85, -1.25, -9.44], [0.9, 0.25, -9.5], [0.95, -2.25, -9.5]
     ]),
     "Kitchen": makeBuilding("kitchen", 3, 2, [
-      [0.65, -1.77, -12.02],
-      [0.6, -0.58, -13.19],
-      [0.52, -1.5, -12.78],
-      [0.7, -1.02, -10.63],
-      [0.64, -1.45, -10.58],
-      [0.7, -0.98, -11.44]
+      [0.65, -1.77, -12.02], [0.6, -0.58, -13.19], [0.52, -1.5, -12.78],
+      [0.7, -1.02, -10.63], [0.64, -1.45, -10.58], [0.7, -0.98, -11.44]
     ]),
     "Crop Farm": makeBuilding("crop_farm", 3, 2, [
-      [0.88, -1.04, -7.72],
-      [0.968, -2.72, -10.08],
-      [1.012, -3.95, -9.07],
-      [1.232, -3.61, -6.59],
-      [1.276, 0.24, -5.71],
-      [1.32, 0.13, -4.36]
+      [0.88, -1.04, -7.72], [0.968, -2.72, -10.08], [1.012, -3.95, -9.07],
+      [1.232, -3.61, -6.59], [1.276, 0.24, -5.71], [1.32, 0.13, -4.36]
     ]),
     "Protein Farm": makeBuilding("protein_farm", 2, 2, [
-      [0.704, -1.28, -3.3],
-      [0.792, 0.86, -2.17],
-      [0.836, -0.16, -1.03],
-      [0.88, -2.06, 0.31],
-      [0.88, -3.09, 1.02],
-      [0.88, -1.1, 1.12]
+      [0.704, -1.28, -3.3], [0.792, 0.86, -2.17], [0.836, -0.16, -1.03],
+      [0.88, -2.06, 0.31], [0.88, -3.09, 1.02], [0.88, -1.1, 1.12]
     ])
   };
 
@@ -145,16 +127,14 @@
   let lastSignature = null;
   let renderToken = 0;
   let resizeFrame = null;
+  let collectionCache = { signature: "", trees: [] };
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
 
   function point(worldX, worldY) {
-    return {
-      x: (worldX - worldY) * STEP_X,
-      y: (worldX + worldY) * STEP_Y
-    };
+    return { x: (worldX - worldY) * STEP_X, y: (worldX + worldY) * STEP_Y };
   }
 
   function project(worldX, worldY, offsetX = 0, offsetY = 0) {
@@ -166,6 +146,10 @@
     return typeof currentArea === "function"
       ? currentArea()
       : { minX: 0, minY: 0, maxX: 12, maxY: 12, width: 12, height: 12 };
+  }
+
+  function areaSignature(area = buildArea()) {
+    return `${area.minX}:${area.minY}:${area.maxX}:${area.maxY}`;
   }
 
   function worldBounds(area = buildArea()) {
@@ -208,6 +192,14 @@
     return [first, first + 1];
   }
 
+  function frontGatePoint(area = buildArea()) {
+    const xs = gateXs(area);
+    return {
+      x: (xs[0] + xs[1]) / 2 + 0.5,
+      y: area.maxY
+    };
+  }
+
   function isFenceGapTile(area, x, y) {
     return y === area.maxY - 1 && gateXs(area).includes(x);
   }
@@ -215,9 +207,17 @@
   function nearFenceGap(x, y, area = buildArea()) {
     const distance = distanceOutside(x, y, area);
     if (distance < 3 || distance > TREE_RULES.innerScatterMax || y < area.maxY) return false;
-    const xs = gateXs(area);
-    const centreX = (xs[0] + xs[1]) / 2;
-    return Math.abs(x - centreX) <= TREE_RULES.gapBiasWidth;
+    const gate = frontGatePoint(area);
+    return Math.abs((x + 0.5) - gate.x) <= TREE_RULES.gapBiasWidth;
+  }
+
+  function frontDryOnlyBand(x, y, area = buildArea()) {
+    const distance = distanceOutside(x, y, area);
+    return (
+      y >= area.maxY &&
+      distance > TREE_RULES.hardClearMax &&
+      distance <= TREE_RULES.frontDryOnlyMax
+    );
   }
 
   function densityForDistance(distance, gap = false) {
@@ -252,15 +252,17 @@
     const distance = distanceOutside(x, y, area);
     if (distance <= TREE_RULES.hardClearMax || distance > WORLD_PADDING) return null;
 
-    // Absolute-cell seed means yard expansion changes distance bands without
-    // arbitrarily reshuffling every distant tree.
-    const seed = hash(`${x}:${y}:pawborough-forest-v5`);
+    const seed = hash(`${x}:${y}:pawborough-forest-v6-front-dry`);
     if ((seed % 10000) / 10000 >= densityForDistance(distance, nearFenceGap(x, y, area))) {
       return null;
     }
 
     let pool;
-    if (distance <= TREE_RULES.innerScatterMax) {
+    if (frontDryOnlyBand(x, y, area)) {
+      // The full side containing the fence opening is dry-only for the first
+      // 15 tiles. This removes every green tree from the front approach.
+      pool = DRY_TREES;
+    } else if (distance <= TREE_RULES.innerScatterMax) {
       pool = ALL_TREES;
     } else if (distance <= TREE_RULES.greenBandMax) {
       pool = GREEN_TREES;
@@ -276,6 +278,7 @@
       y,
       distance,
       nearGap: nearFenceGap(x, y, area),
+      frontDryOnly: frontDryOnlyBand(x, y, area),
       dry: DRY_TREES.includes(asset),
       asset
     };
@@ -298,6 +301,45 @@
     return list;
   }
 
+  function frontGateTreeSources(count = TREE_RULES.collectionTreeCount, area = buildArea()) {
+    const wanted = Math.max(1, Math.floor(Number(count) || TREE_RULES.collectionTreeCount));
+    const signature = `${areaSignature(area)}:${wanted}:front-gate-v1`;
+    if (collectionCache.signature === signature) {
+      return collectionCache.trees.map((tree) => ({ ...tree }));
+    }
+
+    const gate = frontGatePoint(area);
+    const searchDistance = TREE_RULES.denseTransitionMax;
+    const candidates = [];
+
+    // Only trees physically in front of the fence are collection candidates.
+    // This ensures dogs always leave through the gate instead of walking around
+    // toward side/rear trees.
+    for (let y = area.maxY; y < area.maxY + searchDistance; y += 1) {
+      for (let x = area.minX - searchDistance; x < area.maxX + searchDistance; x += 1) {
+        const tree = treeForCell(x, y, area);
+        if (!tree) continue;
+        const centreX = x + 0.5;
+        const centreY = y + 0.5;
+        const gateDistance = Math.hypot(centreX - gate.x, centreY - gate.y);
+        candidates.push({ ...tree, gateDistance });
+      }
+    }
+
+    candidates.sort((a, b) =>
+      a.gateDistance - b.gateDistance ||
+      a.distance - b.distance ||
+      a.y - b.y ||
+      a.x - b.x
+    );
+
+    collectionCache = {
+      signature,
+      trees: candidates.slice(0, wanted)
+    };
+    return collectionCache.trees.map((tree) => ({ ...tree }));
+  }
+
   function pairVariant(firstConnected, secondConnected) {
     if (!firstConnected && secondConnected) return 0;
     if (firstConnected && secondConnected) return 1;
@@ -311,7 +353,6 @@
 
   function autotile(area, x, y, buildable) {
     // Outside grass is logically continuous beyond the visible render range.
-    // No render-boundary check is used here, so there can be no artificial seam.
     const north = sameRegion(area, x, y - 1, buildable);
     const east = sameRegion(area, x + 1, y, buildable);
     const south = sameRegion(area, x, y + 1, buildable);
@@ -358,10 +399,7 @@
     const right = Math.max(...centres.map((p) => p.x + TILE_SIZE / 2));
     const top = Math.min(...centres.map((p) => p.y - TILE_SIZE / 2));
     const bottom = Math.max(...centres.map((p) => p.y + TILE_SIZE / 2));
-    return {
-      x: width / 2 - (left + right) / 2,
-      y: height / 2 - (top + bottom) / 2
-    };
+    return { x: width / 2 - (left + right) / 2, y: height / 2 - (top + bottom) / 2 };
   }
 
   function storagePercent(building) {
@@ -416,11 +454,8 @@
           for (let i = 0; i < px.length; i += 4) {
             const red = px[i], green = px[i + 1], blue = px[i + 2];
             if (
-              green >= 150 &&
-              green >= red + 70 &&
-              green >= blue + 60 &&
-              red <= 120 &&
-              blue <= 130
+              green >= 150 && green >= red + 70 && green >= blue + 60 &&
+              red <= 120 && blue <= 130
             ) {
               px[i] = 0;
               px[i + 1] = 0;
@@ -456,7 +491,9 @@
       if (building.type !== "storage") continue;
       const definition = visualDefinition(building);
       if (!definition) continue;
-      const node = map.querySelector(`.terrain-building-object[data-building-id="${building.id}"] .terrain-building-sprite`);
+      const node = map.querySelector(
+        `.terrain-building-object[data-building-id="${building.id}"] .terrain-building-sprite`
+      );
       if (node) node.src = buildingAsset(building, definition);
     }
   }
@@ -498,7 +535,7 @@
     return [
       area.minX, area.minY, area.maxX, area.maxY,
       Math.round(width), Math.round(height),
-      "world-renderer-v1",
+      "world-renderer-v2-front-dry",
       buildingSignature()
     ].join(":");
   }
@@ -584,6 +621,7 @@
       const screenY = p.y + offset.y;
       return `<img class="forest-tree ${tree.dry ? "dry" : "green"}" src="${tree.asset}" alt="" draggable="false" ` +
         `data-tree-id="${tree.id}" data-world-x="${tree.x}" data-world-y="${tree.y}" data-tree-distance="${tree.distance}" ` +
+        `${tree.frontDryOnly ? `data-front-dry-only="true" ` : ""}` +
         `style="left:${screenX}px;top:${screenY}px;z-index:${5000 + Math.round(screenY * 10)}">`;
     }).join("");
   }
@@ -619,8 +657,7 @@
     if (!context) return { canvas, nearTrees: [] };
     context.imageSmoothingEnabled = false;
 
-    // The full visible ground — original yard surroundings and expansion — is
-    // drawn on this ONE canvas in one depth-sorted pass.
+    // All visible ground is drawn on this single canvas in one pass.
     for (const cell of projected) {
       const buildable = isBuildable(area, cell.x, cell.y);
       const variant = autotile(area, cell.x, cell.y, buildable);
@@ -648,7 +685,10 @@
       else farTrees.push({ tree, screenX: cell.screenX, screenY: cell.screenY });
     }
 
-    farTrees.sort((a, b) => a.screenY - b.screenY || a.tree.x + a.tree.y - (b.tree.x + b.tree.y));
+    farTrees.sort((a, b) =>
+      a.screenY - b.screenY ||
+      (a.tree.x + a.tree.y) - (b.tree.x + b.tree.y)
+    );
     for (const item of farTrees) {
       const image = assets[item.tree.asset];
       if (!image) continue;
@@ -666,28 +706,16 @@
 
   function patchCatalogFootprints() {
     if (!Array.isArray(buildingCatalog)) return;
-    const patches = {
+    const definitions = {
       kennel: { footprintWidth: 2, footprintHeight: 2, groundAnchorX: 1, groundAnchorY: 2 },
       storage: { name: "Stick Storage", footprintWidth: 3, footprintHeight: 2, groundAnchorX: 1.5, groundAnchorY: 2 },
       food: { name: "Kitchen", footprintWidth: 3, footprintHeight: 2, groundAnchorX: 1.5, groundAnchorY: 2 },
       crop_farm: { name: "Crop Farm", footprintWidth: 3, footprintHeight: 2, groundAnchorX: 1.5, groundAnchorY: 2 },
       protein_farm: { name: "Protein Farm", footprintWidth: 2, footprintHeight: 2, groundAnchorX: 1, groundAnchorY: 2 }
     };
-    Object.entries(patches).forEach(([type, patch]) => {
+    Object.entries(definitions).forEach(([type, patch]) => {
       const catalog = buildingCatalog.find((item) => item.type === type);
       if (catalog) Object.assign(catalog, patch);
-    });
-  }
-
-  function syncLegacyWorkerTreeGraphics() {
-    // The worker module is a separate gameplay system. Its legacy source nodes
-    // are visually converted to the approved tree assets so there is no second
-    // "wood source" art system.
-    const sources = [...map.querySelectorAll(".dog-worker-wood-source")];
-    sources.forEach((source, index) => {
-      const asset = ALL_TREES[index % ALL_TREES.length];
-      source.src = asset;
-      source.dataset.treeSource = "true";
     });
   }
 
@@ -697,9 +725,11 @@
     const height = map.clientHeight || 560;
     const nextSignature = signature(area, width, height);
     const existing = map.querySelector(".terrain-floor-world");
-    if (!force && existing && nextSignature === lastSignature) {
-      syncLegacyWorkerTreeGraphics();
-      return;
+    if (!force && existing && nextSignature === lastSignature) return;
+
+    // Area changes invalidate the collection-tree ordering.
+    if (!collectionCache.signature.startsWith(`${areaSignature(area)}:`)) {
+      collectionCache = { signature: "", trees: [] };
     }
 
     const offset = buildOffset(area, width, height);
@@ -738,26 +768,22 @@
 
     map.className = "town-map layout-grid-mode terrain-floor-mode";
     map.replaceChildren(world);
-
     lastSignature = nextSignature;
-    syncLegacyWorkerTreeGraphics();
+
     window.dispatchEvent(new CustomEvent("rescuepup:world-rendered", {
-      detail: { area: { ...area }, world: worldBounds(area) }
+      detail: {
+        area: { ...area },
+        world: worldBounds(area),
+        collectionTrees: frontGateTreeSources(TREE_RULES.collectionTreeCount, area)
+      }
     }));
   }
 
   function requestRender(force = false) {
     const token = ++renderToken;
-    if (assetsReady) {
-      ensureAssets().then((assets) => {
-        if (token !== renderToken) return;
-        renderNow(force, assets);
-      });
-      return;
-    }
     ensureAssets().then((assets) => {
       if (token !== renderToken) return;
-      renderNow(true, assets);
+      renderNow(force || !assetsReady, assets);
     });
   }
 
@@ -800,10 +826,13 @@
     rules: TREE_RULES,
     distanceOutside,
     gateXs,
+    frontGatePoint,
     nearFenceGap,
+    frontDryOnlyBand,
     densityForDistance,
     treeForCell,
     nearbyTreeSources,
+    frontGateTreeSources,
     worldBounds,
     refresh: () => requestRender(true)
   });
@@ -823,12 +852,6 @@
 
   primeStorageSheet();
   requestRender(true);
-
-  // Worker sprites are a separate gameplay module, but their collection-source
-  // artwork is normalized here so the world renderer remains the only owner of
-  // tree art.
-  new MutationObserver(() => queueMicrotask(syncLegacyWorkerTreeGraphics))
-    .observe(map, { childList: true, subtree: true });
 
   if (typeof ResizeObserver !== "undefined") {
     const observer = new ResizeObserver(() => {
