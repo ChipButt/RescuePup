@@ -1,0 +1,36 @@
+/* Dog-worker visuals: exact sprite frames spliced from the supplied main sheet. */
+.dog-worker-wood-layer,
+.dog-worker-dog-layer{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+.dog-worker-wood-layer{z-index:1}
+.dog-worker-dog-layer{z-index:2}
+.dog-worker-wood-source{
+  position:absolute;
+  width:16px;
+  height:16px;
+  transform:translate(-50%,-68%);
+  object-fit:contain;
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
+  pointer-events:none;
+  user-select:none;
+  -webkit-user-drag:none;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.28));
+}
+.dog-worker-sprite{
+  position:absolute;
+  width:32px;
+  height:32px;
+  transform:translate(-50%,-72%);
+  background-repeat:no-repeat;
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
+  pointer-events:none;
+  user-select:none;
+  will-change:left,top,background-position;
+}
+.town-map.map-dragging .dog-worker-sprite,
+.town-map.map-dragging .dog-worker-wood-source{pointer-events:none}
