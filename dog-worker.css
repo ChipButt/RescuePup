@@ -5,8 +5,6 @@
   inset:0;
   pointer-events:none;
 }
-.dog-worker-wood-layer{z-index:1}
-.dog-worker-dog-layer{z-index:2}
 .dog-worker-wood-source{
   position:absolute;
   width:16px;
