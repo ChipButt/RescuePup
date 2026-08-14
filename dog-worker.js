@@ -10,14 +10,18 @@
     run   rows 12-15, cols 0-7
     idle  rows 12-15, cols 11-14
 
-  Direction rows from the supplied direction reference:
+  Direction rows:
     0 = screen SW / down-left
     1 = screen SE / down-right
     2 = screen NW / up-left
     3 = screen NE / up-right
 
-  Dogs may pass through the same logical tile while moving. Stationary destinations
-  are reserved, so two dogs can never stop/work on the same logical tile.
+  Dogs may share transit tiles while moving. Stationary destinations are
+  reserved, so two dogs never stop/work on the same logical tile.
+
+  Stick collection does not create a second set of wood-source coordinates.
+  It consumes the three authoritative front-gate tree targets supplied by
+  world-renderer.js and cycles through those three trees in order.
 */
 (() => {
   const SIZE = 32;
@@ -25,7 +29,9 @@
   const FULL_SHEET_ROWS = 16;
   const SPEED = 1.05;
   const WANDER_MARGIN = 3;
-  const NAV_MARGIN = 8;
+  // Collection trees can sit outside the old eight-tile navigation margin.
+  // Keep navigation wide enough to reach any of the front-gate candidates.
+  const NAV_MARGIN = 36;
 
   const STICK_DIG_MS = 10000;
   const CROP_DIG_MS = 2200;
@@ -56,17 +62,10 @@
     howl: Object.freeze({ rowBase: 8,  colBase: 0,  frames: 9, frameMs: 250 })
   });
 
-  const WOOD = [
-    "./tile_048.png", "./tile_049.png", "./tile_050.png",
-    "./tile_051.png", "./tile_052.png"
-  ];
-
   const dogs = new Map();
   const stationaryReservations = new Map();
   let map = document.getElementById("town-map");
   let last = performance.now();
-  let woodKey = "";
-  let woodSources = [];
 
   const area = () => typeof currentArea === "function"
     ? currentArea()
@@ -86,6 +85,7 @@
     x >= a.minX && y >= a.minY && x < a.maxX && y < a.maxY;
 
   const gateXs = (a = area()) => {
+    if (window.RescuePupForest?.gateXs) return window.RescuePupForest.gateXs(a);
     const x = a.minX + Math.floor((a.maxX - a.minX) / 2) - 1;
     return [x, x + 1];
   };
@@ -96,7 +96,9 @@
 
   function sheetForDog(dog) {
     if (BREED_SHEETS[dog?.breed]) return BREED_SHEETS[dog.breed];
-    if (BREED_NAMES.length && dog?.id) return BREED_SHEETS[BREED_NAMES[hash(dog.id) % BREED_NAMES.length]];
+    if (BREED_NAMES.length && dog?.id) {
+      return BREED_SHEETS[BREED_NAMES[hash(dog.id) % BREED_NAMES.length]];
+    }
     return FALLBACK_SHEET;
   }
 
@@ -180,9 +182,7 @@
     const owner = stationaryReservations.get(targetKey);
     if (owner && owner !== r.dog.id) return false;
 
-    if (r.reservedCellKey && r.reservedCellKey !== targetKey) {
-      releaseReservation(r);
-    }
+    if (r.reservedCellKey && r.reservedCellKey !== targetKey) releaseReservation(r);
     stationaryReservations.set(targetKey, r.dog.id);
     r.reservedCellKey = targetKey;
     return true;
@@ -399,10 +399,7 @@
   }
 
   function move(r, dt, now) {
-    if (
-      r.routeNavigationSignature !== navigationSignature() &&
-      r.routeGoal
-    ) {
+    if (r.routeNavigationSignature !== navigationSignature() && r.routeGoal) {
       const replanned = routePlan(r, r.routeGoal, r.routeAllowBuildingId || null);
       if (!replanned) {
         releaseReservation(r);
@@ -412,13 +409,7 @@
         r.phaseStarted = now;
         return;
       }
-      setRoute(
-        r,
-        replanned,
-        r.routeGoal,
-        r.after,
-        r.routeAllowBuildingId || null
-      );
+      setRoute(r, replanned, r.routeGoal, r.after, r.routeAllowBuildingId || null);
     }
 
     const target = r.route?.[r.routeIndex];
@@ -450,42 +441,9 @@
   }
 
   function sources() {
-    const a = area();
-    const sig = [a.minX, a.minY, a.maxX, a.maxY].join(":");
-    if (sig === woodKey && woodSources.length) return woodSources;
-
-    const list = [];
-    outer:
-    for (let y = a.minY - 7; y < a.maxY + 7; y += 1) {
-      for (let x = a.minX - 7; x < a.maxX + 7; x += 1) {
-        const d = Math.max(
-          a.minX - x,
-          x - (a.maxX - 1),
-          a.minY - y,
-          y - (a.maxY - 1),
-          0
-        );
-        if (d < 3 || d > 7) continue;
-        const score = hash(`${x}:${y}:${sig}`);
-        if (score % 7) continue;
-        if (
-          list.some(
-            (v) => Math.max(Math.abs(v.x - x), Math.abs(v.y - y)) < 2
-          )
-        ) continue;
-        list.push({
-          id: `wood-${x}-${y}`,
-          x,
-          y,
-          asset: WOOD[score % WOOD.length]
-        });
-        if (list.length >= 16) break outer;
-      }
-    }
-
-    woodKey = sig;
-    woodSources = list;
-    return list;
+    const forest = window.RescuePupForest;
+    if (!forest?.frontGateTreeSources) return [];
+    return forest.frontGateTreeSources(3, area()).map((tree) => ({ ...tree }));
   }
 
   function layers() {
@@ -493,30 +451,12 @@
     const world = map?.querySelector(".terrain-floor-world");
     if (!world) return null;
 
-    let woodLayer = world.querySelector(".dog-worker-wood-layer");
-    if (!woodLayer) {
-      woodLayer = document.createElement("div");
-      woodLayer.className = "dog-worker-wood-layer";
-      world.appendChild(woodLayer);
-    }
-
     let dogLayer = world.querySelector(".dog-worker-dog-layer");
     if (!dogLayer) {
       dogLayer = document.createElement("div");
       dogLayer.className = "dog-worker-dog-layer";
       world.appendChild(dogLayer);
     }
-
-    const list = sources();
-    const sig = woodKey + ":" + list.map((s) => s.id).join("|");
-    if (woodLayer.dataset.sig !== sig) {
-      woodLayer.dataset.sig = sig;
-      woodLayer.innerHTML = list.map((s) => {
-        const p = screen(s.x + 0.5, s.y + 0.5);
-        return `<img class="dog-worker-wood-source" src="${s.asset}" alt="" draggable="false" style="left:${p.x}px;top:${p.y}px;z-index:${4800 + Math.round(p.y * 10)}">`;
-      }).join("");
-    }
-
     return { world, dogLayer };
   }
 
@@ -570,14 +510,12 @@
 
     const topY = building.worldY + 0.5;
     const centreX = building.worldX + c.footprintWidth / 2;
-    const centres = [
-      { x: centreX, y: topY },
-      { x: building.worldX + Math.max(0.5, c.footprintWidth / 2 - 1), y: topY },
-      { x: building.worldX + Math.min(c.footprintWidth - 0.5, c.footprintWidth / 2 + 1), y: topY }
-    ];
-
     return {
-      centres,
+      centres: [
+        { x: centreX, y: topY },
+        { x: building.worldX + Math.max(0.5, c.footprintWidth / 2 - 1), y: topY },
+        { x: building.worldX + Math.min(c.footprintWidth - 0.5, c.footprintWidth / 2 + 1), y: topY }
+      ],
       north: { x: building.worldX + 0.5, y: topY },
       east: { x: building.worldX + c.footprintWidth - 0.5, y: topY }
     };
@@ -614,27 +552,40 @@
   }
 
   function startWood(r, now = performance.now()) {
-    const ordered = sources()
-      .map((s) => ({ ...s, centreX: s.x + 0.5, centreY: s.y + 0.5 }))
-      .sort(
-        (a, b) =>
-          Math.hypot(a.centreX - r.x, a.centreY - r.y) -
-          Math.hypot(b.centreX - r.x, b.centreY - r.y)
-      );
+    const collectionTrees = sources();
+    if (!collectionTrees.length) {
+      startIdle(r, now);
+      return;
+    }
 
-    for (const source of ordered) {
+    if (!Number.isInteger(r.woodCycleIndex)) {
+      r.woodCycleIndex = hash(`${r.dog.id}:wood-cycle`) % collectionTrees.length;
+    }
+    r.woodCycleIndex %= collectionTrees.length;
+
+    // Always try the next tree in the three-tree cycle first. Only move to the
+    // next candidate early if all four stationary approach cells are occupied
+    // or unreachable for this dog.
+    for (let attempt = 0; attempt < collectionTrees.length; attempt += 1) {
+      const index = (r.woodCycleIndex + attempt) % collectionTrees.length;
+      const source = collectionTrees[index];
+      const centreX = source.x + 0.5;
+      const centreY = source.y + 0.5;
       const around = [
-        { x: source.centreX + 1, y: source.centreY },
-        { x: source.centreX - 1, y: source.centreY },
-        { x: source.centreX, y: source.centreY + 1 },
-        { x: source.centreX, y: source.centreY - 1 }
+        { x: centreX + 1, y: centreY },
+        { x: centreX - 1, y: centreY },
+        { x: centreX, y: centreY + 1 },
+        { x: centreX, y: centreY - 1 }
       ];
       const choice = bestReachableTarget(r, around, { stationary: true });
       if (!choice) continue;
 
-      r.wood = { ...source, x: source.centreX, y: source.centreY };
+      r.wood = { ...source, x: centreX, y: centreY };
       r.digUntil = 0;
-      if (routeTo(r, choice.point, { after: "digWood", reserve: true })) return;
+      if (routeTo(r, choice.point, { after: "digWood", reserve: true })) {
+        r.woodCycleIndex = (index + 1) % collectionTrees.length;
+        return;
+      }
     }
 
     startIdle(r, now);
@@ -647,9 +598,7 @@
       return;
     }
 
-    const choice = bestReachableTarget(r, buildingEdge(building), {
-      stationary: true
-    });
+    const choice = bestReachableTarget(r, buildingEdge(building), { stationary: true });
     if (!choice) {
       startIdle(r, now);
       return;
@@ -669,9 +618,7 @@
     for (const candidate of candidates) {
       const route = routePlan(r, candidate.point, building.id);
       if (!route) continue;
-      if (!best || route.length < best.score) {
-        best = { ...candidate, score: route.length };
-      }
+      if (!best || route.length < best.score) best = { ...candidate, score: route.length };
     }
     return best;
   }
@@ -906,7 +853,6 @@
         }
 
         setAnim(r, r.cropCornerAction || "idle", now);
-
         if (now >= r.actionUntil) {
           r.actionUntil = 0;
           r.cropCornerAction = null;
@@ -936,8 +882,7 @@
         setAnim(r, "idle", now);
         if (!r.kitchenCentreUntil) {
           r.kitchenCentreUntil =
-            now +
-            KITCHEN_IDLE_MIN_MS +
+            now + KITCHEN_IDLE_MIN_MS +
             (hash(`${r.dog.id}:${r.seq}:kitchen`) % KITCHEN_IDLE_VARIANCE_MS);
           r.seq += 1;
         }
@@ -1008,8 +953,7 @@
       if (candidates.length > index) break;
     }
 
-    const chosen =
-      candidates[index % Math.max(1, candidates.length)] ||
+    const chosen = candidates[index % Math.max(1, candidates.length)] ||
       { x: a.minX + 1 + index, y: a.minY + 1 };
     used.add(key(chosen));
     return centre(chosen);
@@ -1027,9 +971,7 @@
       }
     }
 
-    const usedSpawns = new Set(
-      [...dogs.values()].map((r) => key(cell(r.x, r.y)))
-    );
+    const usedSpawns = new Set([...dogs.values()].map((r) => key(cell(r.x, r.y))));
 
     list.forEach((dog, index) => {
       let r = dogs.get(dog.id);
@@ -1057,7 +999,8 @@
           waitUntil: performance.now() + index * 300,
           reservedCellKey: null,
           cropCornerIndex: index % 4,
-          cropCornerVisits: index
+          cropCornerVisits: index,
+          woodCycleIndex: hash(`${dog.id}:wood-cycle`) % 3
         };
         dogs.set(dog.id, r);
         reservePoint(r, spawn);
@@ -1131,9 +1074,10 @@
 
   window.RescuePupDogWorkers = Object.freeze({
     movementSpeedTilesPerSecond: SPEED,
-    boundaryGate: "south-west-centre-two-tiles",
+    boundaryGate: "front-centre-two-tiles",
     collisionMode: "A*-buildings-fence; stationary-only dog reservations",
     stationaryRule: "dogs may share transit tiles but never stationary tiles",
+    stickCollectionRule: "cycle through the three trees closest to the front gate",
     spriteMapping: {
       fullSheet: { width: 960, height: 1024, cell: 64 },
       displayCell: SIZE,
@@ -1152,13 +1096,10 @@
     },
     breedSheets: BREED_SHEETS,
     get reservations() {
-      return [...stationaryReservations.entries()].map(([tile, dogId]) => ({
-        tile,
-        dogId
-      }));
+      return [...stationaryReservations.entries()].map(([tile, dogId]) => ({ tile, dogId }));
     },
     get woodSources() {
-      return sources().map((x) => ({ ...x }));
+      return sources().map((tree) => ({ ...tree }));
     },
     get dogs() {
       return [...dogs.values()].map((r) => ({
@@ -1170,6 +1111,8 @@
         animation: r.anim,
         directionRow: r.direction,
         stationaryTile: r.reservedCellKey,
+        woodCycleIndex: r.woodCycleIndex,
+        woodTreeId: r.wood?.id || null,
         x: r.x,
         y: r.y
       }));
