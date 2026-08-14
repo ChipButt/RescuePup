@@ -44,12 +44,13 @@
     const a=area(),sig=[a.minX,a.minY,a.maxX,a.maxY].join(":");
     if(sig===woodKey&&woodSources.length)return woodSources;
     const list=[];
-    for(let y=a.minY-7;y<a.maxY+7;y++)for(let x=a.minX-7;x<a.maxX+7;x++){
+    outer:for(let y=a.minY-7;y<a.maxY+7;y++)for(let x=a.minX-7;x<a.maxX+7;x++){
       const d=Math.max(a.minX-x,x-(a.maxX-1),a.minY-y,y-(a.maxY-1),0);
       if(d<3||d>7)continue;
       const score=hash(`${x}:${y}:${sig}`);if(score%7)continue;
       if(list.some(v=>Math.max(Math.abs(v.x-x),Math.abs(v.y-y))<2))continue;
-      list.push({id:`wood-${x}-${y}`,x,y,asset:WOOD[score%WOOD.length]});if(list.length>=16)break;
+      list.push({id:`wood-${x}-${y}`,x,y,asset:WOOD[score%WOOD.length]});
+      if(list.length>=16)break outer;
     }
     woodKey=sig;woodSources=list;return list;
   }
@@ -58,8 +59,8 @@
     map=document.getElementById("town-map");const world=map?.querySelector(".terrain-floor-world");if(!world)return null;
     let wl=world.querySelector(".dog-worker-wood-layer");if(!wl){wl=document.createElement("div");wl.className="dog-worker-wood-layer";world.appendChild(wl)}
     let dl=world.querySelector(".dog-worker-dog-layer");if(!dl){dl=document.createElement("div");dl.className="dog-worker-dog-layer";world.appendChild(dl)}
-    const sig=woodKey+":"+sources().map(s=>s.id).join("|");
-    if(wl.dataset.sig!==sig){wl.dataset.sig=sig;wl.innerHTML=sources().map(s=>{const p=screen(s.x+.5,s.y+.5);return`<img class="dog-worker-wood-source" src="${s.asset}" alt="" draggable="false" style="left:${p.x}px;top:${p.y}px;z-index:${4800+Math.round(p.y*10)}">`}).join("")}
+    const list=sources(),sig=woodKey+":"+list.map(s=>s.id).join("|");
+    if(wl.dataset.sig!==sig){wl.dataset.sig=sig;wl.innerHTML=list.map(s=>{const p=screen(s.x+.5,s.y+.5);return`<img class="dog-worker-wood-source" src="${s.asset}" alt="" draggable="false" style="left:${p.x}px;top:${p.y}px;z-index:${4800+Math.round(p.y*10)}">`}).join("")}
     return{world,dl};
   }
 
@@ -84,7 +85,11 @@
   function routeTo(r,target){
     const a=area(),fromIn=inside(Math.floor(r.x),Math.floor(r.y),a),toIn=inside(Math.floor(target.x),Math.floor(target.y),a);
     r.route=[];
-    if(fromIn!==toIn){const gx=nearest(gateXs(a).map(x=>({x:x+.5,y:a.maxY-.5})),r).x;r.route.push({x:gx,y:a.maxY-.5},{x:gx,y:a.maxY+.5})}
+    if(fromIn!==toIn){
+      const gx=nearest(gateXs(a).map(x=>({x:x+.5,y:a.maxY-.5})),r).x;
+      if(fromIn){r.route.push({x:gx,y:a.maxY-.5},{x:gx,y:a.maxY+.5})}
+      else{r.route.push({x:gx,y:a.maxY+.5},{x:gx,y:a.maxY-.5})}
+    }
     r.route.push(target);r.routeIndex=0;r.phase="move";
   }
   function move(r,dt,now){
