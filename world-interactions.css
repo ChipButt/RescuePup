@@ -19,4 +19,3 @@
 .terrain-floor-anchor{background:none!important;background-image:none!important;opacity:0!important}
 .terrain-building-layer .terrain-building-object{pointer-events:auto}
 .forest-tree{position:absolute;width:64px;height:80px;transform:translate(-50%,-92%);object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges;pointer-events:none;user-select:none;-webkit-user-drag:none;filter:drop-shadow(0 3px 2px rgba(0,0,0,.3))}
-.dog-worker-wood-source[data-tree-source="true"]{width:64px!important;height:80px!important;transform:translate(-50%,-92%)!important;object-fit:contain!important;image-rendering:pixelated!important;filter:drop-shadow(0 3px 2px rgba(0,0,0,.3))!important}
