@@ -2,21 +2,21 @@
 
 /*
   Expanded RescuePup outer world.
-  Logical world: 110 tiles beyond every current build-area edge (the previous
-  10-tile terrain ring + another 100 tiles).
+  Logical world: 110 tiles beyond every current build-area edge.
 
-  The forest is deterministic for the whole logical world. For mobile runtime
-  performance only the portion that can enter the bounded camera is painted:
-  near trees are individual depth-sorted sprites, while the dense far forest is
-  flattened onto a canvas backdrop. Dogs still use individual tree sprites as
-  their harvest targets.
+  Forest rule:
+    - absolutely no trees within 25 tiles of the buildable area;
+    - tiles 26-35 form the sparse-to-dense transition;
+    - beyond tile 35 the forest is dense.
 */
 (() => {
   const map = document.getElementById("town-map");
   if (!map) return;
 
   const WORLD_PADDING = 110;
-  const RENDER_MARGIN = 34;
+  const CLEAR_BUFFER = 25;
+  const TRANSITION_TILES = 10;
+  const RENDER_MARGIN = 48;
   const EXISTING_TERRAIN_PADDING = 10;
   const TREE_W = 64;
   const TREE_H = 80;
@@ -76,26 +76,24 @@
   }
 
   function gateCorridor(x, y, a = areaNow()) {
-    // Preserve a short clear approach through the approved two-tile south-west
-    // fence opening so working dogs never visually tunnel through a tree.
-    return y >= a.maxY && y <= a.maxY + 3 && gateXs(a).some((gx) => Math.abs(x - gx) <= 1);
+    return y >= a.maxY && y <= a.maxY + CLEAR_BUFFER && gateXs(a).some((gx) => Math.abs(x - gx) <= 1);
   }
 
   function treeForCell(x, y, a = areaNow()) {
     const d = distanceOutside(x, y, a);
-    if (d <= 0 || d > WORLD_PADDING || gateCorridor(x, y, a)) return null;
+    if (d <= CLEAR_BUFFER || d > WORLD_PADDING || gateCorridor(x, y, a)) return null;
 
-    const seed = hash(`${x}:${y}:${a.minX}:${a.minY}:${a.maxX}:${a.maxY}:forest-v1`);
+    const transitionDistance = d - CLEAR_BUFFER;
+    const seed = hash(`${x}:${y}:${a.minX}:${a.minY}:${a.maxX}:${a.maxY}:forest-v2-clear25`);
     const roll = (seed % 10000) / 10000;
-    // Sparse immediately outside the yard, steadily thickening through the
-    // 10-tile transition, then becoming a dense forest toward the outer world.
-    const density = d <= 10
-      ? 0.06 + (d / 10) * 0.55
+
+    const density = transitionDistance <= TRANSITION_TILES
+      ? 0.06 + (transitionDistance / TRANSITION_TILES) * 0.55
       : 0.84;
     if (roll >= density) return null;
 
-    const dryChance = d <= 10
-      ? 0.03 + 0.32 * (1 - ((d - 1) / 9))
+    const dryChance = transitionDistance <= TRANSITION_TILES
+      ? 0.03 + 0.32 * (1 - ((transitionDistance - 1) / Math.max(1, TRANSITION_TILES - 1)))
       : 0.015;
     const dryRoll = ((seed >>> 8) % 10000) / 10000;
     const pool = dryRoll < dryChance ? DRY_TREES : GREEN_TREES;
@@ -165,7 +163,7 @@
   }
 
   function forestSignature(a) {
-    return `${a.minX}:${a.minY}:${a.maxX}:${a.maxY}:forest-v1`;
+    return `${a.minX}:${a.minY}:${a.maxX}:${a.maxY}:forest-v2-clear25`;
   }
 
   async function renderForest() {
@@ -177,7 +175,7 @@
     const a = areaNow();
     const signature = forestSignature(a);
     if (world.dataset.forestSignature === signature && world.querySelector(".forest-tree-layer")) {
-      replaceHarvestSources();
+      suppressLegacyNearYardTreeSources();
       return;
     }
 
@@ -203,8 +201,6 @@
     const canvasWidth = Math.max(1, maxScreenX - minScreenX);
     const canvasHeight = Math.max(1, maxScreenY - minScreenY);
 
-    // Extend the grass beyond the old 10-tile DOM terrain ring. Far outside
-    // terrain is fully connected, so the standard connected grass cell is used.
     if (grassImage) {
       const floorCanvas = document.createElement("canvas");
       floorCanvas.className = "forest-floor-extension";
@@ -247,7 +243,7 @@
       const tree = treeForCell(item.x, item.y, a);
       if (!tree) continue;
       const image = treeImages[tree.asset];
-      if (tree.distance > 12) {
+      if (tree.distance > CLEAR_BUFFER + 12) {
         if (farContext && image) {
           farContext.drawImage(
             image,
@@ -267,31 +263,18 @@
     world.appendChild(farCanvas);
     world.appendChild(nearLayer);
     world.dataset.forestSignature = signature;
-    replaceHarvestSources();
+    suppressLegacyNearYardTreeSources();
   }
 
-  function harvestTreeAsset(index) {
-    // Harvest targets are mostly living trees with occasional dry trees in the
-    // sparse near-yard band, matching the surrounding transition forest.
-    if (index % 6 === 0) return DRY_TREES[(index >> 1) % DRY_TREES.length];
-    return GREEN_TREES[index % GREEN_TREES.length];
-  }
-
-  function replaceHarvestSources() {
-    const sources = [...map.querySelectorAll(".dog-worker-wood-source")];
-    sources.forEach((source, index) => {
-      const nextAsset = harvestTreeAsset(index);
-      if (source.dataset.treeAsset !== nextAsset) {
-        source.dataset.treeAsset = nextAsset;
-        source.dataset.treeSource = "true";
-        source.src = nextAsset;
-      }
-      const top = parseFloat(source.style.top) || 0;
-      source.style.zIndex = String(5000 + Math.round(top * 10));
+  function suppressLegacyNearYardTreeSources() {
+    // The old worker source layer was generated only 3-7 tiles from the yard.
+    // Those visual tree replacements must not violate the new 25-tile clearing.
+    map.querySelectorAll(".dog-worker-wood-source").forEach((source) => {
+      source.style.display = "none";
     });
   }
 
-  function nearbyTreeSources(a = areaNow(), maxDistance = 10) {
+  function nearbyTreeSources(a = areaNow(), maxDistance = CLEAR_BUFFER + TRANSITION_TILES) {
     const list = [];
     for (let y = a.minY - maxDistance; y < a.maxY + maxDistance; y += 1) {
       for (let x = a.minX - maxDistance; x < a.maxX + maxDistance; x += 1) {
@@ -305,7 +288,7 @@
   const observer = new MutationObserver(() => {
     requestAnimationFrame(() => {
       renderForest();
-      replaceHarvestSources();
+      suppressLegacyNearYardTreeSources();
     });
   });
   observer.observe(map, { childList: true, subtree: true });
@@ -317,6 +300,8 @@
 
   window.RescuePupForest = Object.freeze({
     worldPadding: WORLD_PADDING,
+    clearBuffer: CLEAR_BUFFER,
+    transitionTiles: TRANSITION_TILES,
     renderMargin: RENDER_MARGIN,
     treeAssets: TREE_ASSETS,
     worldBounds,
