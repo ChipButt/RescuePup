@@ -16,6 +16,11 @@
     ...(window.RescuePupMapCamera?.position || { x: 0, y: 0 }),
     zoom: window.RescuePupMapCamera?.zoom || 1
   });
+  const terrainGeometry = () => ({
+    tileSize: Number(window.RescuePupTerrain?.tileSize) || 32,
+    stepX: Number(window.RescuePupTerrain?.stepX) || 16,
+    stepY: Number(window.RescuePupTerrain?.stepY) || 8
+  });
 
   function visualName(type) {
     if (type === "kennel") return "Kennel";
@@ -37,13 +42,16 @@
     const o = placementOffset();
     if (!o) return null;
     const c = camera();
-    // Inverse of: screen = pan + zoom * (terrainPoint + terrainOffset)
+    const geometry = terrainGeometry();
+    // The 32px terrain sprite includes its vertical dirt wall. The walkable
+    // diamond is centred one STEP_Y above the sprite centre. Invert that same
+    // surface projection here so drag coordinates and fence geometry agree.
     const layerX = (clientX - rect.left - c.x) / c.zoom;
     const layerY = (clientY - rect.top - c.y) / c.zoom;
     const localX = layerX - o.x;
-    const localY = layerY - o.y;
-    const difference = localX / 16;
-    const sum = localY / 8;
+    const localSurfaceY = layerY - o.y;
+    const difference = localX / geometry.stepX;
+    const sum = (localSurfaceY + geometry.stepY) / geometry.stepY;
     return { x: (difference + sum) / 2, y: (sum - difference) / 2 };
   }
 
@@ -67,20 +75,25 @@
     const o = placementOffset();
     if (!o || !window.RescuePupTerrain) return null;
     const c = camera();
+    const geometry = terrainGeometry();
     const p = window.RescuePupTerrain.point(worldX, worldY);
-    return { x: c.x + (p.x + o.x) * c.zoom, y: c.y + (p.y + o.y) * c.zoom };
+    return {
+      x: c.x + (p.x + o.x) * c.zoom,
+      y: c.y + (p.y + o.y - geometry.stepY) * c.zoom
+    };
   }
 
   function footprintMarkup(catalog, valid) {
     const m = mode();
     const c = camera();
     if (!m) return "";
+    const geometry = terrainGeometry();
     const cells = [];
     for (let y = 0; y < catalog.footprintHeight; y += 1) {
       for (let x = 0; x < catalog.footprintWidth; x += 1) {
         const p = screenPoint(m.worldX + x + 0.5, m.worldY + y + 0.5);
         if (!p) continue;
-        cells.push(`<span class="placement-highlight-cell ${valid ? "valid" : "invalid"}" style="left:${p.x}px;top:${p.y}px;width:${32 * c.zoom}px;height:${16 * c.zoom}px"></span>`);
+        cells.push(`<span class="placement-highlight-cell ${valid ? "valid" : "invalid"}" style="left:${p.x}px;top:${p.y}px;width:${geometry.tileSize * c.zoom}px;height:${geometry.stepY * 2 * c.zoom}px"></span>`);
       }
     }
     return cells.join("");
