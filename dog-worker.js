@@ -11,7 +11,9 @@
 */
 (() => {
   const SIZE=32, SPEED=2.7, WANDER_MARGIN=3, STICK_DIG=10000, CROP_DIG_INTERVAL=10000, CROP_DIG_TIME=1200;
-  const SPRITES={run:"./wolf/no shadow & effects/wolf-run.png",idle:"./wolf/no shadow & effects/wolf-idle.png",dig:"./wolf/no shadow & effects/wolf-death.png"};
+  // These exact files are byte-for-byte matches for the user's supplied reference
+  // strips and are direct crops of the supplied wolf-all sprite sheet.
+  const SPRITES={run:"./wolf/wolf-run.png",idle:"./wolf/wolf-idle.png",dig:"./wolf/wolf-death.png"};
   const WOOD=["./tile_048.png","./tile_049.png","./tile_050.png","./tile_051.png","./tile_052.png"];
   const dogs=new Map();
   let map=document.getElementById("town-map"), last=performance.now(), woodKey="", woodSources=[];
@@ -99,8 +101,8 @@
   }
 
   function idleTarget(r){
-    const a=area(),seed=hash(`${r.dog.id}:${r.seq++}`),w=a.maxX-a.minX+6,h=a.maxY-a.minY+6;
-    return{x:a.minX-3+.5+(seed%w),y:a.minY-3+.5+((seed>>>8)%h)};
+    const a=area(),seed=hash(`${r.dog.id}:${r.seq++}`),w=a.maxX-a.minX+WANDER_MARGIN*2,h=a.maxY-a.minY+WANDER_MARGIN*2;
+    return{x:a.minX-WANDER_MARGIN+.5+(seed%w),y:a.minY-WANDER_MARGIN+.5+((seed>>>8)%h)};
   }
   function startIdle(r,now){r.after="idleWait";routeTo(r,idleTarget(r));r.waitUntil=now+700+(hash(`${r.dog.id}:${r.seq}`)%1600)}
   function startWood(r){const s=nearest(sources().map(s=>({...s,x:s.x+.5,y:s.y+.5})),r);if(!s){startIdle(r,performance.now());return}r.wood=s;const around=[{x:s.x+1,y:s.y},{x:s.x-1,y:s.y},{x:s.x,y:s.y+1},{x:s.x,y:s.y-1}];r.after="digWood";routeTo(r,nearest(around,r));r.digUntil=0}
