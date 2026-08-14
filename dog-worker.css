@@ -16,11 +16,17 @@
   user-select:none;
   will-change:left,top,background-position;
 }
-/* The supplied Beagle source uses 48px frames rather than the 64px cells used
-   by the original breed sheets. wolf-all-beagle.webp is packed onto the same
-   15x16 / 64px-cell layout, so the worker's existing frame coordinates remain
-   authoritative and only the breed-specific image source needs overriding. */
+/*
+  The uploaded Beagle frames actually live in the repo's root animation folders
+  (Idle/, Running/, Digging/, Bark/). wolf-all-beagle.webp is the runtime-packed
+  derivative of those exact frames, arranged on the worker's existing 64px-cell
+  sheet geometry. The source Beagle occupies much less of each 48px source cell
+  than the older wolf art, so enlarge the rendered cell without changing the
+  animation engine's 32px frame addressing.
+*/
 .dog-worker-sprite[data-breed="Beagle"]{
   background-image:url("./wolf-all-beagle.webp")!important;
+  transform:translate(-50%,-72%) scale(1.4);
+  transform-origin:50% 72%;
 }
 .town-map.map-dragging .dog-worker-sprite{pointer-events:none}
