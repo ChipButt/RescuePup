@@ -1,0 +1,17 @@
+/* Bounded town-map drag camera. */
+.town-map{
+  touch-action:none;
+  cursor:grab;
+  overscroll-behavior:none;
+}
+.town-map.map-dragging{
+  cursor:grabbing;
+}
+.town-map .terrain-floor-world{
+  overflow:visible;
+  transform:translate3d(var(--map-pan-x,0px),var(--map-pan-y,0px),0);
+  will-change:transform;
+}
+.town-map.map-dragging .terrain-building-object{
+  cursor:grabbing;
+}
