@@ -1,33 +1,44 @@
 "use strict";
 
 /*
-  Expanded RescuePup outer world.
+  RescuePup expanded outer world.
+
   Logical world: 110 tiles beyond every current build-area edge.
 
-  Forest rule:
-    - absolutely no trees within 25 tiles of the buildable area;
-    - tiles 26-35 form the sparse-to-dense transition;
-    - beyond tile 35 the forest is dense.
+  Tree placement rules:
+    - distance 0-2: completely clear;
+    - distance 3-9: occasional trees using any of the four tree assets;
+      the south-west fence-gate approach gets a small density boost;
+    - distance 10-25: green Tree 5 / Tree 6 only, becoming denser
+      the farther from the buildable area the tile is;
+    - distance 26-35: transition into the dense outer forest;
+    - distance 36+: dense outer forest, overwhelmingly green with only
+      an occasional dry tree.
 */
 (() => {
   const map = document.getElementById("town-map");
   if (!map) return;
 
   const WORLD_PADDING = 110;
-  const CLEAR_BUFFER = 25;
-  const TRANSITION_TILES = 10;
+  const HARD_CLEAR_TILES = 2;
+  const INNER_SCATTER_MAX = 9;
+  const GREEN_BAND_MAX = 25;
+  const DENSE_TRANSITION_MAX = 35;
   const RENDER_MARGIN = 48;
   const EXISTING_TERRAIN_PADDING = 10;
   const TREE_W = 64;
   const TREE_H = 80;
+
   const TREE_ASSETS = Object.freeze({
     tree5: "./Tree%205.png",
     tree6: "./Tree%206.png",
     tree5Dry: "./Tree%205%20Dry.png",
     tree6Dry: "./Tree%206%20Dry.png"
   });
-  const GREEN_TREES = [TREE_ASSETS.tree5, TREE_ASSETS.tree6];
-  const DRY_TREES = [TREE_ASSETS.tree5Dry, TREE_ASSETS.tree6Dry];
+
+  const GREEN_TREES = Object.freeze([TREE_ASSETS.tree5, TREE_ASSETS.tree6]);
+  const DRY_TREES = Object.freeze([TREE_ASSETS.tree5Dry, TREE_ASSETS.tree6Dry]);
+  const ALL_TREES = Object.freeze([...GREEN_TREES, ...DRY_TREES]);
 
   const images = new Map();
   let grassImage = null;
@@ -75,35 +86,82 @@
     return [first, first + 1];
   }
 
-  function gateCorridor(x, y, a = areaNow()) {
-    return y >= a.maxY && y <= a.maxY + CLEAR_BUFFER && gateXs(a).some((gx) => Math.abs(x - gx) <= 1);
+  function nearFenceGap(x, y, a = areaNow()) {
+    const d = distanceOutside(x, y, a);
+    if (d < 3 || d > 9 || y < a.maxY) return false;
+    const xs = gateXs(a);
+    const centreX = (xs[0] + xs[1]) / 2;
+    return Math.abs(x - centreX) <= 4;
+  }
+
+  function densityForDistance(distance, nearGap = false) {
+    if (distance <= HARD_CLEAR_TILES) return 0;
+
+    if (distance <= INNER_SCATTER_MAX) {
+      const t = (distance - 3) / Math.max(1, INNER_SCATTER_MAX - 3);
+      const base = 0.04 + t * 0.10;
+      return Math.min(0.28, base + (nearGap ? 0.10 : 0));
+    }
+
+    if (distance <= GREEN_BAND_MAX) {
+      const t = (distance - 10) / Math.max(1, GREEN_BAND_MAX - 10);
+      return 0.16 + Math.max(0, Math.min(1, t)) * 0.36;
+    }
+
+    if (distance <= DENSE_TRANSITION_MAX) {
+      const t = (distance - 26) / Math.max(1, DENSE_TRANSITION_MAX - 26);
+      return 0.56 + Math.max(0, Math.min(1, t)) * 0.24;
+    }
+
+    return 0.84;
+  }
+
+  function treePoolForDistance(distance) {
+    if (distance >= 3 && distance <= INNER_SCATTER_MAX) return ALL_TREES;
+    if (distance >= 10 && distance <= GREEN_BAND_MAX) return GREEN_TREES;
+    return null;
   }
 
   function treeForCell(x, y, a = areaNow()) {
-    const d = distanceOutside(x, y, a);
-    if (d <= CLEAR_BUFFER || d > WORLD_PADDING || gateCorridor(x, y, a)) return null;
+    const distance = distanceOutside(x, y, a);
+    if (distance <= HARD_CLEAR_TILES || distance > WORLD_PADDING) return null;
 
-    const transitionDistance = d - CLEAR_BUFFER;
-    const seed = hash(`${x}:${y}:${a.minX}:${a.minY}:${a.maxX}:${a.maxY}:forest-v2-clear25`);
+    const seed = hash(`${x}:${y}:${a.minX}:${a.minY}:${a.maxX}:${a.maxY}:forest-v3-bands`);
     const roll = (seed % 10000) / 10000;
-
-    const density = transitionDistance <= TRANSITION_TILES
-      ? 0.06 + (transitionDistance / TRANSITION_TILES) * 0.55
-      : 0.84;
+    const density = densityForDistance(distance, nearFenceGap(x, y, a));
     if (roll >= density) return null;
 
-    const dryChance = transitionDistance <= TRANSITION_TILES
-      ? 0.03 + 0.32 * (1 - ((transitionDistance - 1) / Math.max(1, TRANSITION_TILES - 1)))
-      : 0.015;
-    const dryRoll = ((seed >>> 8) % 10000) / 10000;
-    const pool = dryRoll < dryChance ? DRY_TREES : GREEN_TREES;
+    let pool = treePoolForDistance(distance);
+    let dry = false;
+
+    if (!pool) {
+      const dryChance = distance <= DENSE_TRANSITION_MAX ? 0.03 : 0.015;
+      const dryRoll = ((seed >>> 8) % 10000) / 10000;
+      dry = dryRoll < dryChance;
+      pool = dry ? DRY_TREES : GREEN_TREES;
+    } else if (pool === ALL_TREES) {
+      const chosenIndex = (seed >>> 18) % pool.length;
+      const asset = pool[chosenIndex];
+      dry = DRY_TREES.includes(asset);
+      return {
+        id: `tree-${x}-${y}`,
+        x,
+        y,
+        distance,
+        nearGap: nearFenceGap(x, y, a),
+        dry,
+        asset
+      };
+    }
+
     const asset = pool[(seed >>> 18) % pool.length];
     return {
       id: `tree-${x}-${y}`,
       x,
       y,
-      distance: d,
-      dry: pool === DRY_TREES,
+      distance,
+      nearGap: nearFenceGap(x, y, a),
+      dry,
       asset
     };
   }
@@ -140,8 +198,11 @@
   }
 
   async function ensureAssets() {
-    const entries = await Promise.all(Object.values(TREE_ASSETS).map(async (src) => [src, await loadImage(src)]));
+    const entries = await Promise.all(
+      Object.values(TREE_ASSETS).map(async (src) => [src, await loadImage(src)])
+    );
     const treeImages = Object.fromEntries(entries);
+
     if (!grassImage) {
       grassImage = await new Promise((resolve) => {
         const image = new Image();
@@ -150,6 +211,7 @@
         image.src = "./Bottom%20Grassland.png";
       });
     }
+
     return treeImages;
   }
 
@@ -163,7 +225,7 @@
   }
 
   function forestSignature(a) {
-    return `${a.minX}:${a.minY}:${a.maxX}:${a.maxY}:forest-v2-clear25`;
+    return `${a.minX}:${a.minY}:${a.maxX}:${a.maxY}:forest-v3-bands`;
   }
 
   async function renderForest() {
@@ -174,15 +236,20 @@
 
     const a = areaNow();
     const signature = forestSignature(a);
-    if (world.dataset.forestSignature === signature && world.querySelector(".forest-tree-layer")) {
-      suppressLegacyNearYardTreeSources();
+    if (
+      world.dataset.forestSignature === signature &&
+      world.querySelector(".forest-tree-layer")
+    ) {
+      suppressLegacyWoodSourceGraphics();
       return;
     }
 
     const treeImages = await ensureAssets();
     if (token !== renderToken || !world.isConnected) return;
 
-    world.querySelectorAll(".forest-floor-extension,.forest-tree-layer,.forest-backdrop-canvas").forEach((node) => node.remove());
+    world
+      .querySelectorAll(".forest-floor-extension,.forest-tree-layer,.forest-backdrop-canvas")
+      .forEach((node) => node.remove());
 
     const range = visibleRange(a);
     const positions = [];
@@ -192,7 +259,9 @@
         positions.push({ x, y, p, depth: x + y });
       }
     }
-    positions.sort((left, right) => left.depth - right.depth || left.y - right.y || left.x - right.x);
+    positions.sort(
+      (left, right) => left.depth - right.depth || left.y - right.y || left.x - right.x
+    );
 
     const minScreenX = Math.floor(Math.min(...positions.map((v) => v.p.x)) - TREE_W - 20);
     const maxScreenX = Math.ceil(Math.max(...positions.map((v) => v.p.x)) + TREE_W + 20);
@@ -212,8 +281,8 @@
       if (context) {
         context.imageSmoothingEnabled = false;
         for (const item of positions) {
-          const d = distanceOutside(item.x, item.y, a);
-          if (d <= EXISTING_TERRAIN_PADDING) continue;
+          const distance = distanceOutside(item.x, item.y, a);
+          if (distance <= EXISTING_TERRAIN_PADDING) continue;
           context.drawImage(
             grassImage,
             32, 32, 32, 32,
@@ -243,7 +312,8 @@
       const tree = treeForCell(item.x, item.y, a);
       if (!tree) continue;
       const image = treeImages[tree.asset];
-      if (tree.distance > CLEAR_BUFFER + 12) {
+
+      if (tree.distance > GREEN_BAND_MAX + 12) {
         if (farContext && image) {
           farContext.drawImage(
             image,
@@ -255,40 +325,58 @@
         }
         continue;
       }
+
       const zIndex = 5000 + Math.round(item.p.y * 10);
-      nearMarkup.push(`<img class="forest-tree ${tree.dry ? "dry" : "green"}" src="${tree.asset}" alt="" draggable="false" data-tree-id="${tree.id}" data-world-x="${tree.x}" data-world-y="${tree.y}" style="left:${item.p.x}px;top:${item.p.y}px;z-index:${zIndex}">`);
+      nearMarkup.push(
+        `<img class="forest-tree ${tree.dry ? "dry" : "green"}" src="${tree.asset}" alt="" draggable="false" data-tree-id="${tree.id}" data-world-x="${tree.x}" data-world-y="${tree.y}" data-tree-distance="${tree.distance}" style="left:${item.p.x}px;top:${item.p.y}px;z-index:${zIndex}">`
+      );
     }
 
     nearLayer.innerHTML = nearMarkup.join("");
     world.appendChild(farCanvas);
     world.appendChild(nearLayer);
     world.dataset.forestSignature = signature;
-    suppressLegacyNearYardTreeSources();
+    suppressLegacyWoodSourceGraphics();
+
+    window.dispatchEvent(new CustomEvent("rescuepup:forest-updated"));
   }
 
-  function suppressLegacyNearYardTreeSources() {
-    // The old worker source layer was generated only 3-7 tiles from the yard.
-    // Those visual tree replacements must not violate the new 25-tile clearing.
+  function suppressLegacyWoodSourceGraphics() {
+    // Stick collectors should visually target the actual forest trees, not the
+    // old tile_048-052 graphics from the earlier prototype.
     map.querySelectorAll(".dog-worker-wood-source").forEach((source) => {
       source.style.display = "none";
     });
   }
 
-  function nearbyTreeSources(a = areaNow(), maxDistance = CLEAR_BUFFER + TRANSITION_TILES) {
+  function nearbyTreeSources(a = areaNow(), maxDistance = GREEN_BAND_MAX) {
     const list = [];
     for (let y = a.minY - maxDistance; y < a.maxY + maxDistance; y += 1) {
       for (let x = a.minX - maxDistance; x < a.maxX + maxDistance; x += 1) {
         const tree = treeForCell(x, y, a);
-        if (tree && tree.distance <= maxDistance) list.push(tree);
+        if (
+          tree &&
+          tree.distance >= 3 &&
+          tree.distance <= maxDistance
+        ) {
+          list.push(tree);
+        }
       }
     }
+
+    list.sort((left, right) =>
+      left.distance - right.distance ||
+      Number(right.nearGap) - Number(left.nearGap) ||
+      left.y - right.y ||
+      left.x - right.x
+    );
     return list;
   }
 
   const observer = new MutationObserver(() => {
     requestAnimationFrame(() => {
       renderForest();
-      suppressLegacyNearYardTreeSources();
+      suppressLegacyWoodSourceGraphics();
     });
   });
   observer.observe(map, { childList: true, subtree: true });
@@ -300,12 +388,17 @@
 
   window.RescuePupForest = Object.freeze({
     worldPadding: WORLD_PADDING,
-    clearBuffer: CLEAR_BUFFER,
-    transitionTiles: TRANSITION_TILES,
+    hardClearTiles: HARD_CLEAR_TILES,
+    innerScatterMax: INNER_SCATTER_MAX,
+    greenBandMax: GREEN_BAND_MAX,
+    denseTransitionMax: DENSE_TRANSITION_MAX,
     renderMargin: RENDER_MARGIN,
     treeAssets: TREE_ASSETS,
     worldBounds,
     distanceOutside,
+    gateXs,
+    nearFenceGap,
+    densityForDistance,
     treeForCell,
     nearbyTreeSources,
     refresh: renderForest
