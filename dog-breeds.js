@@ -75,11 +75,33 @@
     try { if (typeof renderScreens === "function") renderScreens(); } catch {}
   }
 
+  function syncDogSpriteBreeds(root = document) {
+    const nodes = root.querySelectorAll?.(".dog-worker-sprite[data-dog-id]") || [];
+    for (const node of nodes) {
+      const dog = state?.dogs?.find?.((item) => item.id === node.dataset.dogId);
+      if (!dog?.breed) continue;
+      if (node.dataset.breed !== dog.breed) node.dataset.breed = dog.breed;
+    }
+  }
+
+  // Dog sprites are created/recreated by the worker when the world renders.
+  // Keep their breed metadata in sync here so breed-specific visuals have one
+  // reliable source without duplicating dog movement/animation logic.
+  if (typeof MutationObserver !== "undefined" && document.body) {
+    const observer = new MutationObserver((mutations) => {
+      if (mutations.some((mutation) => mutation.addedNodes.length)) syncDogSpriteBreeds(document);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+  window.addEventListener("rescuepup:world-rendered", () => requestAnimationFrame(() => syncDogSpriteBreeds(document)));
+  requestAnimationFrame(() => syncDogSpriteBreeds(document));
+
   window.RescuePupDogBreeds = Object.freeze({
     breeds: BREEDS,
     names: Object.freeze(BREEDS.map((breed) => breed.name)),
     assetForBreed(name) {
       return BREEDS.find((breed) => breed.name === name)?.asset || null;
-    }
+    },
+    syncDogSpriteBreeds
   });
 })();
