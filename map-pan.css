@@ -1,4 +1,4 @@
-/* Bounded town-map drag camera. */
+/* Bounded town-map pan + pinch zoom camera. */
 .town-map{
   touch-action:none;
   cursor:grab;
@@ -7,9 +7,13 @@
 .town-map.map-dragging{
   cursor:grabbing;
 }
+.town-map.map-pinching{
+  cursor:zoom-in;
+}
 .town-map .terrain-floor-world{
   overflow:visible;
-  transform:translate3d(var(--map-pan-x,0px),var(--map-pan-y,0px),0);
+  transform-origin:0 0;
+  transform:translate3d(var(--map-pan-x,0px),var(--map-pan-y,0px),0) scale(var(--map-zoom,1));
   will-change:transform;
 }
 .town-map.map-dragging .terrain-building-object{
